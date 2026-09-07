@@ -1,0 +1,26 @@
+{
+  "name": "vantage",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Privacy-Preserving Credit Exposure Verification on Midnight",
+  "workspaces": [
+    "contracts",
+    "frontend"
+  ],
+  "scripts": {
+    "compact:compile": "npm --prefix contracts run compact:compile",
+    "test:contracts": "npm --prefix contracts test",
+    "test": "npm run test:contracts",
+    "build": "npm --prefix contracts run build"
+  },
+  "keywords": [
+    "midnight",
+    "compact",
+    "zero-knowledge",
+    "privacy",
+    "fintech",
+    "microfinance"
+  ],
+  "author": "Vantage Team",
+  "license": "Apache-2.0"
+}

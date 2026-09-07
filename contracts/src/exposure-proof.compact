@@ -1,0 +1,137 @@
+pragma language_version >= 0.20;
+
+import CompactStandardLibrary;
+
+// Status of a private loan record
+enum LoanStatus {
+  INACTIVE,
+  ACTIVE,
+  CLOSED
+}
+
+// Private loan record structure supplied by the borrower witness
+struct PrivateLoanRecord {
+  lender_id: Bytes<32>,
+  amount: Uint<64>,
+  nonce: Bytes<32>,
+  status: LoanStatus
+}
+
+// Accumulator structure for fold-based exposure calculations
+struct ExposureSummary {
+  active_count: Uint<16>,
+  total_exposure: Uint<64>
+}
+
+// Public Ledger State
+// Append-only set of active loan commitments (hashes only)
+export ledger loan_commitments: Set<Bytes<32>>;
+
+// Append-only set of nullifiers for closed/repaid loans
+export ledger nullifiers: Set<Bytes<32>>;
+
+// Witness declarations: local private state supplied by borrower's client
+witness get_borrower_id(): Bytes<32>;
+witness get_loan_records(): Vector<8, PrivateLoanRecord>;
+
+// Pure circuit: Computes a persistent 32-byte cryptographic commitment for a loan
+export circuit compute_loan_commitment(
+  borrower_id: Bytes<32>,
+  lender_id: Bytes<32>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>([
+    borrower_id,
+    lender_id,
+    amount as Bytes<32>,
+    nonce
+  ]);
+}
+
+// Pure circuit: Computes a nullifier hash for a closed loan
+export circuit compute_nullifier(
+  commitment: Bytes<32>,
+  nonce: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([
+    commitment,
+    nonce
+  ]);
+}
+
+// Helper circuit to process each loan in the borrower's private witness portfolio
+circuit process_loan_item(
+  acc: ExposureSummary,
+  loan: PrivateLoanRecord,
+  borrower_id: Bytes<32>
+): ExposureSummary {
+  if (disclose(loan.status == LoanStatus.ACTIVE)) {
+    assert(loan.amount > 0, "Active loan amount must be positive");
+    
+    // Cryptographically verify loan commitment exists in on-chain ledger
+    const commitment = compute_loan_commitment(borrower_id, loan.lender_id, loan.amount, loan.nonce);
+    assert(loan_commitments.member(disclose(commitment)), "Active loan commitment not found on-chain");
+
+    // Verify loan is not already closed/nullified
+    const nul = compute_nullifier(commitment, loan.nonce);
+    assert(!nullifiers.member(disclose(nul)), "Loan has already been closed");
+
+    return ExposureSummary {
+      active_count: (acc.active_count + 1) as Uint<16>,
+      total_exposure: (acc.total_exposure + loan.amount) as Uint<64>
+    };
+  } else {
+    return acc;
+  }
+}
+
+// Circuit 1: Issuer registers a disbursed loan on-chain
+// Writes only the commitment hash to public ledger state
+export circuit register_loan(
+  borrower_id: Bytes<32>,
+  lender_id: Bytes<32>,
+  amount: Uint<64>,
+  nonce: Bytes<32>
+): [] {
+  assert(amount > 0, "Loan amount must be greater than zero");
+  const commitment = compute_loan_commitment(borrower_id, lender_id, amount, nonce);
+  assert(!loan_commitments.member(disclose(commitment)), "Loan commitment already registered");
+  loan_commitments.insert(disclose(commitment));
+}
+
+// Circuit 2: Borrower generates ZK proof that total exposure is within regulatory limits
+// Private loan amounts and lender identities are processed strictly within the circuit
+export circuit prove_exposure_within_limit(
+  max_lender_count: Uint<16>,
+  max_total_exposure: Uint<64>
+): [] {
+  const borrower_id = get_borrower_id();
+  const loans = get_loan_records();
+
+  const initial_summary = ExposureSummary {
+    active_count: 0,
+    total_exposure: 0
+  };
+
+  const summary = fold(
+    (acc: ExposureSummary, item: PrivateLoanRecord): ExposureSummary => process_loan_item(acc, item, borrower_id),
+    initial_summary,
+    loans
+  );
+
+  // Enforce regulatory threshold constraints
+  assert(summary.active_count <= max_lender_count, "Active loan count exceeds allowed limit");
+  assert(summary.total_exposure <= max_total_exposure, "Total credit exposure exceeds allowed regulatory cap");
+}
+
+// Circuit 3: Marks a loan as closed/repaid via nullifier insertion
+export circuit close_loan(
+  loan_commitment: Bytes<32>,
+  nonce: Bytes<32>
+): [] {
+  assert(loan_commitments.member(disclose(loan_commitment)), "Loan commitment does not exist");
+  const nul = compute_nullifier(loan_commitment, nonce);
+  assert(!nullifiers.member(disclose(nul)), "Loan already closed/nullified");
+  nullifiers.insert(disclose(nul));
+}

@@ -17,8 +17,9 @@ struct PrivateLoanRecord {
   status: LoanStatus
 }
 
-// Accumulator structure for fold-based exposure calculations
+// Accumulator structure for fold-based exposure calculations & completeness check
 struct ExposureSummary {
+  running_root: Bytes<32>,
   active_count: Uint<16>,
   total_exposure: Uint<64>
 }
@@ -30,9 +31,17 @@ export ledger loan_commitments: Set<Bytes<32>>;
 // Append-only set of nullifiers for closed/repaid loans
 export ledger nullifiers: Set<Bytes<32>>;
 
+// Per-borrower cryptographic portfolio accumulator root (anti-omission enforcement)
+export ledger borrower_portfolios: Map<Bytes<32>, Bytes<32>>;
+
 // Witness declarations: local private state supplied by borrower's client
 witness get_borrower_id(): Bytes<32>;
 witness get_loan_records(): Vector<8, PrivateLoanRecord>;
+
+// Pure circuit: Computes the genesis accumulator root
+export circuit get_genesis_root(): Bytes<32> {
+  return pad(32, "vantage:portfolio:genesis");
+}
 
 // Pure circuit: Computes a persistent 32-byte cryptographic commitment for a loan
 export circuit compute_loan_commitment(
@@ -60,34 +69,60 @@ export circuit compute_nullifier(
   ]);
 }
 
-// Helper circuit to process each loan in the borrower's private witness portfolio
-circuit process_loan_item(
+// Pure circuit: Updates portfolio accumulator with a new commitment
+export circuit update_portfolio_root(
+  current_root: Bytes<32>,
+  commitment: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([
+    current_root,
+    commitment
+  ]);
+}
+
+// Helper circuit to fold over each loan in the borrower's private witness portfolio
+circuit process_portfolio_item(
   acc: ExposureSummary,
   loan: PrivateLoanRecord,
   borrower_id: Bytes<32>
 ): ExposureSummary {
-  if (disclose(loan.status == LoanStatus.ACTIVE)) {
-    assert(loan.amount > 0, "Active loan amount must be positive");
-    
-    // Cryptographically verify loan commitment exists in on-chain ledger
-    const commitment = compute_loan_commitment(borrower_id, loan.lender_id, loan.amount, loan.nonce);
-    assert(loan_commitments.member(disclose(commitment)), "Active loan commitment not found on-chain");
-
-    // Verify loan is not already closed/nullified
-    const nul = compute_nullifier(commitment, loan.nonce);
-    assert(!nullifiers.member(disclose(nul)), "Loan has already been closed");
-
-    return ExposureSummary {
-      active_count: (acc.active_count + 1) as Uint<16>,
-      total_exposure: (acc.total_exposure + loan.amount) as Uint<64>
-    };
-  } else {
+  if (disclose(loan.status == LoanStatus.INACTIVE)) {
     return acc;
+  } else {
+    assert(loan.amount > 0, "Loan amount must be positive");
+    
+    // Cryptographically compute commitment
+    const commitment = compute_loan_commitment(borrower_id, loan.lender_id, loan.amount, loan.nonce);
+    
+    // Accumulate loan into running portfolio root
+    const next_root = update_portfolio_root(acc.running_root, commitment);
+
+    if (disclose(loan.status == LoanStatus.ACTIVE)) {
+      // Active loan must NOT have a nullifier recorded on-chain
+      const nul = compute_nullifier(commitment, loan.nonce);
+      assert(!nullifiers.member(disclose(nul)), "Active loan is marked closed on-chain");
+
+      return ExposureSummary {
+        running_root: next_root,
+        active_count: (acc.active_count + 1) as Uint<16>,
+        total_exposure: (acc.total_exposure + loan.amount) as Uint<64>
+      };
+    } else {
+      // CLOSED loan MUST have a valid nullifier on-chain
+      const nul = compute_nullifier(commitment, loan.nonce);
+      assert(nullifiers.member(disclose(nul)), "Closed loan has no on-chain nullifier record");
+
+      return ExposureSummary {
+        running_root: next_root,
+        active_count: acc.active_count,
+        total_exposure: acc.total_exposure
+      };
+    }
   }
 }
 
 // Circuit 1: Issuer registers a disbursed loan on-chain
-// Writes only the commitment hash to public ledger state
+// Updates both the global commitment set AND the borrower's on-chain portfolio root
 export circuit register_loan(
   borrower_id: Bytes<32>,
   lender_id: Bytes<32>,
@@ -98,27 +133,47 @@ export circuit register_loan(
   const commitment = compute_loan_commitment(borrower_id, lender_id, amount, nonce);
   assert(!loan_commitments.member(disclose(commitment)), "Loan commitment already registered");
   loan_commitments.insert(disclose(commitment));
+
+  // Retrieve current on-chain portfolio root for this borrower (or genesis if first loan)
+  const current_root = borrower_portfolios.member(disclose(borrower_id))
+    ? borrower_portfolios.lookup(disclose(borrower_id))
+    : get_genesis_root();
+
+  const new_root = update_portfolio_root(current_root, commitment);
+  borrower_portfolios.insert(disclose(borrower_id), disclose(new_root));
 }
 
 // Circuit 2: Borrower generates ZK proof that total exposure is within regulatory limits
-// Private loan amounts and lender identities are processed strictly within the circuit
+// Enforces cryptographic completeness: borrower cannot omit registered loans
 export circuit prove_exposure_within_limit(
   max_lender_count: Uint<16>,
   max_total_exposure: Uint<64>
 ): [] {
   const borrower_id = get_borrower_id();
   const loans = get_loan_records();
+  const genesis_root = get_genesis_root();
 
   const initial_summary = ExposureSummary {
+    running_root: genesis_root,
     active_count: 0,
     total_exposure: 0
   };
 
   const summary = fold(
-    (acc: ExposureSummary, item: PrivateLoanRecord): ExposureSummary => process_loan_item(acc, item, borrower_id),
+    (acc: ExposureSummary, item: PrivateLoanRecord): ExposureSummary => process_portfolio_item(acc, item, borrower_id),
     initial_summary,
     loans
   );
+
+  // Anti-Omission Verification Gate:
+  // Reconstructed witness root MUST strictly match the on-chain portfolio accumulator
+  if (borrower_portfolios.member(disclose(borrower_id))) {
+    const on_chain_root = borrower_portfolios.lookup(disclose(borrower_id));
+    assert(summary.running_root == on_chain_root, "Borrower witness omitted registered loans or does not match portfolio root");
+  } else {
+    // Borrower has zero loans on-chain: witness must be empty
+    assert(summary.running_root == genesis_root, "Borrower has no on-chain loans but non-empty witness was supplied");
+  }
 
   // Enforce regulatory threshold constraints
   assert(summary.active_count <= max_lender_count, "Active loan count exceeds allowed limit");

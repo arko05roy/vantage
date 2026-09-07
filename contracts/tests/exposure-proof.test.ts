@@ -42,7 +42,15 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
     return { contract, ctx };
   };
 
-  describe('1. Pure Circuits & Cryptographic Commitments', () => {
+  describe('1. Pure Circuits & Cryptographic Primitives', () => {
+    it('computes deterministic genesis root', () => {
+      const root1 = pureCircuits.get_genesis_root();
+      const root2 = pureCircuits.get_genesis_root();
+      expect(root1).toBeInstanceOf(Uint8Array);
+      expect(root1.length).toBe(32);
+      expect(root1).toEqual(root2);
+    });
+
     it('computes deterministic 32-byte loan commitments', () => {
       const borrower = makeId('borrower', 1);
       const lender = makeId('lender_a', 1);
@@ -94,7 +102,7 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
   });
 
   describe('2. Loan Registration Circuit (Issuer Flow)', () => {
-    it('successfully registers a loan commitment on-chain', () => {
+    it('successfully registers a loan commitment & updates borrower portfolio accumulator', () => {
       const borrower = makeId('borrower', 1);
       const privateState = createVantagePrivateState(borrower, []);
       const { contract, ctx } = setupTestContext(privateState);
@@ -121,6 +129,14 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
 
       expect(onChainLedger.loan_commitments.member(expectedCommitment)).toBe(true);
       expect(onChainLedger.loan_commitments.size()).toBe(1n);
+
+      // Verify per-borrower portfolio accumulator updated on-chain
+      expect(onChainLedger.borrower_portfolios.member(borrower)).toBe(true);
+      const expectedRoot = pureCircuits.update_portfolio_root(
+        pureCircuits.get_genesis_root(),
+        expectedCommitment
+      );
+      expect(onChainLedger.borrower_portfolios.lookup(borrower)).toEqual(expectedRoot);
     });
 
     it('rejects registering duplicate loan commitments', () => {
@@ -165,7 +181,42 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
     });
   });
 
-  describe('3. Exposure Verification Circuit (Borrower Flow)', () => {
+  describe('3. Exposure Verification Circuit (Borrower Flow & Anti-Omission Gate)', () => {
+    it('passes verification for zero-loan borrowers with an empty witness vector', () => {
+      const newBorrower = makeId('new_borrower', 10);
+      // Brand new borrower with no loans registered on-chain
+      const privateState = createVantagePrivateState(newBorrower, []);
+      const { contract, ctx } = setupTestContext(privateState);
+
+      // Zero active loans trivially satisfy <= 2 lenders and <= ₹1,00,000
+      const proveCall = contract.impureCircuits.prove_exposure_within_limit(
+        ctx,
+        2n,
+        100000n
+      );
+
+      expect(proveCall.result).toEqual([]);
+      expect(proveCall.proofData.publicTranscript.length).toBeGreaterThan(0);
+    });
+
+    it('rejects zero-loan borrower who tries to supply an uncommitted loan in witness', () => {
+      const newBorrower = makeId('new_borrower', 11);
+      const fakeLoan: PrivateLoanRecord = {
+        lender_id: makeId('lender_x', 1),
+        amount: 10000n,
+        nonce: makeId('nonce_fake', 1),
+        status: LoanStatus.ACTIVE,
+      };
+
+      const privateState = createVantagePrivateState(newBorrower, [fakeLoan]);
+      const { contract, ctx } = setupTestContext(privateState);
+
+      // Borrower has 0 on-chain loans but supplied a non-empty witness
+      expect(() =>
+        contract.impureCircuits.prove_exposure_within_limit(ctx, 2n, 100000n)
+      ).toThrow('Borrower has no on-chain loans but non-empty witness was supplied');
+    });
+
     it('passes verification when borrower is strictly within limits', () => {
       const borrower = makeId('borrower', 1);
       const lenderA = makeId('lender_a', 1);
@@ -199,7 +250,6 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
       );
 
       expect(proveCall.result).toEqual([]);
-      expect(proveCall.proofData.publicTranscript.length).toBeGreaterThan(0);
     });
 
     it('passes boundary condition: exactly at threshold cap (2 lenders, ₹1,00,000)', () => {
@@ -231,7 +281,7 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
       const reg1 = contract.impureCircuits.register_loan(ctx, borrower, lenderA, amountA, nonceA);
       const reg2 = contract.impureCircuits.register_loan(reg1.context, borrower, lenderB, amountB, nonceB);
 
-      // Verify exact boundary: max 2 lenders, max ₹1,00,000 (total is exactly ₹100,000 across 2 lenders)
+      // Verify exact boundary: max 2 lenders, max ₹1,00,000
       const proveCall = contract.impureCircuits.prove_exposure_within_limit(
         reg2.context,
         2n,
@@ -239,6 +289,44 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
       );
 
       expect(proveCall.result).toEqual([]);
+    });
+
+    it('PREVENTS LOAN OMISSION: rejects proof if borrower omits a registered loan from witness', () => {
+      const borrower = makeId('borrower', 100);
+      const lenderA = makeId('lender_a', 1);
+      const lenderB = makeId('lender_b', 2);
+      const lenderC = makeId('lender_c', 3);
+
+      const amountA = 30000n;
+      const amountB = 40000n;
+      const amountC = 50000n; // Total = 120,000 > 100,000 cap!
+
+      const nonceA = makeId('nonce', 1001);
+      const nonceB = makeId('nonce', 1002);
+      const nonceC = makeId('nonce', 1003);
+
+      const loanA: PrivateLoanRecord = { lender_id: lenderA, amount: amountA, nonce: nonceA, status: LoanStatus.ACTIVE };
+      const loanB: PrivateLoanRecord = { lender_id: lenderB, amount: amountB, nonce: nonceB, status: LoanStatus.ACTIVE };
+      const loanC: PrivateLoanRecord = { lender_id: lenderC, amount: amountC, nonce: nonceC, status: LoanStatus.ACTIVE };
+
+      // Set up context with full 3-loan witness to register all on-chain
+      const fullPrivateState = createVantagePrivateState(borrower, [loanA, loanB, loanC]);
+      const { contract, ctx } = setupTestContext(fullPrivateState);
+
+      // Issuer registers all 3 loans on-chain
+      let currentCtx = contract.impureCircuits.register_loan(ctx, borrower, lenderA, amountA, nonceA).context;
+      currentCtx = contract.impureCircuits.register_loan(currentCtx, borrower, lenderB, amountB, nonceB).context;
+      currentCtx = contract.impureCircuits.register_loan(currentCtx, borrower, lenderC, amountC, nonceC).context;
+
+      // Malicious attempt: borrower creates a pruned witness omitting Loan C
+      // They claim they only have [Loan A, Loan B] (₹70k exposure, 2 lenders)
+      const prunedOmissionState = createVantagePrivateState(borrower, [loanA, loanB]);
+      const maliciousCtx = { ...currentCtx, currentPrivateState: prunedOmissionState };
+
+      // Verification MUST fail because running_root != on_chain_portfolio_root
+      expect(() =>
+        contract.impureCircuits.prove_exposure_within_limit(maliciousCtx, 2n, 100000n)
+      ).toThrow('Borrower witness omitted registered loans or does not match portfolio root');
     });
 
     it('fails verification when total exposure exceeds the amount limit', () => {
@@ -250,18 +338,8 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
       const nonceA = makeId('nonce', 301);
       const nonceB = makeId('nonce', 302);
 
-      const loan1: PrivateLoanRecord = {
-        lender_id: lenderA,
-        amount: amountA,
-        nonce: nonceA,
-        status: LoanStatus.ACTIVE,
-      };
-      const loan2: PrivateLoanRecord = {
-        lender_id: lenderB,
-        amount: amountB,
-        nonce: nonceB,
-        status: LoanStatus.ACTIVE,
-      };
+      const loan1: PrivateLoanRecord = { lender_id: lenderA, amount: amountA, nonce: nonceA, status: LoanStatus.ACTIVE };
+      const loan2: PrivateLoanRecord = { lender_id: lenderB, amount: amountB, nonce: nonceB, status: LoanStatus.ACTIVE };
 
       const privateState = createVantagePrivateState(borrower, [loan1, loan2]);
       const { contract, ctx } = setupTestContext(privateState);
@@ -311,30 +389,32 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
       ).toThrow('Active loan count exceeds allowed limit');
     });
 
-    it('rejects verification if private witness includes uncommitted fake loans', () => {
-      const borrower = makeId('borrower', 5);
+    it('rejects falsified loan status: marking active loan as closed without on-chain nullifier', () => {
+      const borrower = makeId('borrower', 50);
       const lenderA = makeId('lender_a', 1);
-      const fakeNonce = makeId('nonce', 999);
+      const amountA = 25000n;
+      const nonceA = makeId('nonce', 501);
 
-      const fakeLoan: PrivateLoanRecord = {
-        lender_id: lenderA,
-        amount: 25000n,
-        nonce: fakeNonce,
-        status: LoanStatus.ACTIVE,
-      };
-
-      const privateState = createVantagePrivateState(borrower, [fakeLoan]);
+      // Borrower registers loan as active on-chain
+      const loanReal: PrivateLoanRecord = { lender_id: lenderA, amount: amountA, nonce: nonceA, status: LoanStatus.ACTIVE };
+      const privateState = createVantagePrivateState(borrower, [loanReal]);
       const { contract, ctx } = setupTestContext(privateState);
 
-      // We do NOT register the loan on-chain
+      const reg = contract.impureCircuits.register_loan(ctx, borrower, lenderA, amountA, nonceA);
+
+      // Malicious attempt: borrower sets loan status to CLOSED in their witness without loan being repaid
+      const loanFalsified: PrivateLoanRecord = { lender_id: lenderA, amount: amountA, nonce: nonceA, status: LoanStatus.CLOSED };
+      const falsifiedState = createVantagePrivateState(borrower, [loanFalsified]);
+      const maliciousCtx = { ...reg.context, currentPrivateState: falsifiedState };
+
       expect(() =>
-        contract.impureCircuits.prove_exposure_within_limit(ctx, 2n, 100000n)
-      ).toThrow('Active loan commitment not found on-chain');
+        contract.impureCircuits.prove_exposure_within_limit(maliciousCtx, 2n, 100000n)
+      ).toThrow('Closed loan has no on-chain nullifier record');
     });
   });
 
   describe('4. Loan Closure & Nullifier Lifecycle', () => {
-    it('successfully closes a loan and drops it from active exposure', () => {
+    it('successfully closes a loan and drops it from active exposure while maintaining portfolio integrity', () => {
       const borrower = makeId('borrower', 6);
       const lenderA = makeId('lender_a', 1);
       const lenderB = makeId('lender_b', 2);
@@ -367,12 +447,12 @@ describe('Vantage Compact Smart Contract & Zero-Knowledge Circuits', () => {
       const expectedNullifier = pureCircuits.compute_nullifier(commA, nonceA);
       expect(currentLedger.nullifiers.member(expectedNullifier)).toBe(true);
 
-      // Borrower updates their private state to mark Loan A CLOSED
+      // Borrower updates their private state: Loan A is marked CLOSED (kept in vector to preserve portfolio root)
       const loanAClosed: PrivateLoanRecord = { ...loanA, status: LoanStatus.CLOSED };
       const updatedPrivateState = createVantagePrivateState(borrower, [loanAClosed, loanB, loanC]);
       const updatedCtx = { ...currentCtx, currentPrivateState: updatedPrivateState };
 
-      // Now borrower proves exposure against max 2 lenders: MUST PASS because loan A is closed!
+      // Now borrower proves exposure against max 2 lenders: MUST PASS because loan A is legitimately closed!
       const proveAfterClose = contract.impureCircuits.prove_exposure_within_limit(
         updatedCtx,
         2n,

@@ -4,6 +4,17 @@
   "runtime-version": "0.16.0",
   "circuits": [
     {
+      "name": "get_genesis_root",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "compute_loan_commitment",
       "pure": true,
       "proof": false,
@@ -56,6 +67,31 @@
         },
         {
           "name": "nonce",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "update_portfolio_root",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "current_root",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "commitment",
           "type": {
             "type-name": "Bytes",
             "length": 32
@@ -238,6 +274,20 @@
       "exported": true,
       "storage": "Set",
       "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "borrower_portfolios",
+      "index": 2,
+      "exported": true,
+      "storage": "Map",
+      "key": {
+        "type-name": "Bytes",
+        "length": 32
+      },
+      "value": {
         "type-name": "Bytes",
         "length": 32
       }

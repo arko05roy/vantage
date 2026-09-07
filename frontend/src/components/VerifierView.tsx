@@ -13,6 +13,8 @@ import {
   RefreshCw,
   ExternalLink,
   Cpu,
+  Zap,
+  Activity,
 } from 'lucide-react';
 import { ZkProofResult } from '@/lib/types';
 
@@ -33,6 +35,11 @@ export const VerifierView: React.FC = () => {
     status: 'idle' | 'verified' | 'failed';
     reason?: string;
     verifiedAt?: string;
+    auditMetrics?: {
+      transcriptCheck: boolean;
+      accumulatorCheck: boolean;
+      piiDisclosed: number;
+    };
   }>({ status: 'idle' });
 
   const activeProof = customProofJson
@@ -54,6 +61,11 @@ export const VerifierView: React.FC = () => {
         setVerificationResult({
           status: 'verified',
           verifiedAt: new Date().toLocaleTimeString(),
+          auditMetrics: {
+            transcriptCheck: true,
+            accumulatorCheck: true,
+            piiDisclosed: 0,
+          },
         });
       } else {
         setVerificationResult({

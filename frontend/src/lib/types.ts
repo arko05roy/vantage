@@ -38,6 +38,8 @@ export interface ZkProofResult {
   publicTranscript: string;
   isValid: boolean;
   generatedAt: string;
+  executionTimeMs?: number;
+  circuitVersion?: string;
   rawProofData?: any;
 }
 

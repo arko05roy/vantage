@@ -1,97 +1,110 @@
-# System Architecture
+# Vantage: Technical Architecture & System Design
 
-This document describes the technical architecture, state model, and zero-knowledge circuit design of Vantage.
+**Project**: Vantage — Zero-Knowledge Microfinance Exposure Proof System  
+**Network**: Midnight Blockchain (WaveHack 2026)  
+**Smart Contract Language**: Compact v0.31.1 (`@midnight-ntwrk/compact-runtime` v0.16.0)
 
 ---
 
-## 1. State Partitioning & Dual-Ledger Model
+## 1. Executive Summary & Dual-Ledger Model
 
-Vantage separates public ledger state on Midnight from private borrower witness data held locally in the client application.
+Vantage implements a zero-knowledge regulatory compliance oracle for Indian NBFC-Microfinance Institutions (NBFC-MFIs). Under Reserve Bank of India (RBI) directives, a microfinance borrower must not exceed:
+1. **Total outstanding exposure cap**: $\le ₹1,00,000$ (or MFI policy limit).
+2. **Concurrent active lenders cap**: $\le 2$ microfinance institutions.
 
-### Public On-Chain Ledger
-The Compact contract maintains three public state structures:
-- `loan_commitments: Set<Bytes<32>>`: Set of 32-byte cryptographic commitments generated during loan registration:
-  ```
-  commitment = persistentHash([borrower_id, lender_id, amount, nonce])
-  ```
-- `nullifiers: Set<Bytes<32>>`: Set of spent loan markers published when a loan is closed:
-  ```
-  nullifier = persistentHash([commitment, nonce])
-  ```
-- `borrower_portfolios: Map<Bytes<32>, Bytes<32>>`: Mapping of `borrower_id` to the root hash of their registered loan commitments.
-
-### Private Off-Chain State
-The borrower's browser vault stores private loan records that are never published in cleartext:
-```typescript
-interface PrivateLoanRecord {
-  lender_id: Uint8Array; // 32 bytes
-  amount: bigint;        // Loan principal (INR)
-  nonce: Uint8Array;     // 32-byte random entropy salt
-  status: number;        // 0: Inactive, 1: Active, 2: Closed
-}
-```
+Traditional credit bureaus (CIBIL, CRIF High Mark, Equifax) require centralizing cleartext Aadhaar numbers, loan balances, repayment dates, and institution names—exposing vulnerable rural borrowers to predatory cross-selling and surveillance. Vantage resolves this tension by partitioning state across Midnight's dual-ledger model:
 
 ```
-+-----------------------------------------------------------------------------+
-|                                Midnight Ledger                              |
-|                                                                             |
-|   Public Storage:                                                           |
-|   - loan_commitments: Set<Bytes<32>>                                        |
-|   - nullifiers: Set<Bytes<32>>                                              |
-|   - borrower_portfolios: Map<Bytes<32>, Bytes<32>>                          |
-|                                                                             |
-|   Compact Circuits:                                                         |
-|   - register_loan(borrower_id, lender_id, amount, nonce)                    |
-|   - close_loan(commitment, nonce)                                           |
-|   - prove_exposure_within_limit(max_lenders, max_amount)                    |
-+--------------------------------------┬--------------------------------------+
-                                       | ZK Verification
-+--------------------------------------┴--------------------------------------+
-|                         Borrower Local Vault (Browser)                      |
-|                                                                             |
-|   Private Witness:                                                          |
-|   - borrower_id: Bytes<32>                                                  |
-|   - loans: Vector<8, PrivateLoanRecord>                                     |
-+-----------------------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            MIDNIGHT BLOCKCHAIN                              │
+│                                                                             │
+│   Public On-Chain Ledger:                                                   │
+│   ├── loan_commitments: Set<Bytes<32>>   (Cryptographic loan commitments)   │
+│   ├── nullifiers: Set<Bytes<32>>         (Repayment double-spend guards)    │
+│   └── borrower_portfolios: Map<Bytes<32>, Bytes<32>> (Accumulator roots)    │
+│                                                                             │
+│   Compact Smart Contract Circuits:                                          │
+│   ├── register_loan(borrower_id, lender_id, amount, nonce)                  │
+│   ├── close_loan(commitment, nonce)                                         │
+│   └── prove_exposure_within_limit(max_lenders, max_amount)                  │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │ ZK Proof & Transcript Verification
+                                       │
+┌──────────────────────────────────────┴──────────────────────────────────────┐
+│                    OFF-CHAIN BORROWER PRIVATE VAULT (Browser)               │
+│                                                                             │
+│   Private Witness State:                                                    │
+│   ├── borrower_id: Bytes<32>                                                │
+│   └── loans: Vector<8, PrivateLoanRecord>                                   │
+│       ├── lender_id: Bytes<32>                                              │
+│       ├── amount: Uint<64> (₹ INR)                                          │
+│       ├── nonce: Bytes<32> (Secret entropy salt)                            │
+│       └── status: Uint<8>  (0=Inactive, 1=Active, 2=Closed)                 │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Circuit Proving Pipeline
+## 2. Proving Pipeline & Telemetry Breakdown
 
-Zero-knowledge proving runs in two phases:
+### What Happens During Circuit Execution (~300–450ms Latency)
 
-### Stage 1: In-Browser ZKIR Evaluation
-- Executed in WebAssembly via `@midnight-ntwrk/compact-runtime`.
-- Marshals the private witness into `Vector<8, PrivateLoanRecord>`.
-- Folds over the witness using `persistentHash([running_root, commitment])` and checks that the reconstructed root matches `borrower_portfolios[borrower_id]`.
-- Asserts that all witness commitments exist in `loan_commitments` and are not in `nullifiers`.
-- Verifies that `active_lenders <= max_lenders` and `total_exposure <= max_amount`.
-- Produces the ZK Intermediate Representation (ZKIR) trace (`prove_exposure_within_limit.bzkir`) and public transcript.
+In the Vantage client and Midnight architecture, proof generation operates in two distinct stages:
 
-### Stage 2: SNARK Proof Generation
-- Sends the ZKIR trace and witness assignment to the Midnight Proof Server (`midnightnetwork/proof-server` on port 6300).
-- Produces the final Groth16/Plonk zero-knowledge SNARK proof envelope.
-- In standalone web preview mode without Docker running, the client outputs the verified Stage 1 ZKIR constraint result directly.
+```
++-------------------------------------------------------------------------------+
+| STAGE 1: Client-Side Witness Synthesis & ZKIR Evaluation (~300-450ms)         |
+| Executed directly in-browser via @midnight-ntwrk/compact-runtime WASM         |
++-------------------------------------------------------------------------------+
+  1. Witness Marshaling: Packages private loans into Vector<8, PrivateLoanRecord>.
+  2. Cryptographic Folding: Folds over witness to compute portfolio root via
+     persistentHash([running_root, commitment]).
+  3. Anti-Omission Assertion: Verifies calculated running_root == on_chain_root.
+  4. Constraint Evaluation: Verifies on-chain commitment existence, nullifier
+     non-membership, active lender count <= max_lenders, and total active
+     exposure <= max_amount.
+  5. Transcript Synthesis: Generates the Zero-Knowledge Intermediate Representation
+     (ZKIR) byte buffer (prove_exposure_within_limit.bzkir) and publicTranscript.
+                                     │
+                                     ▼
++-------------------------------------------------------------------------------+
+| STAGE 2: Proving Key SNARK Envelope Synthesis (Proof Server / Docker)         |
+| Executed via midnightnetwork/proof-server:latest on port 6300                 |
++-------------------------------------------------------------------------------+
+  - Ingests the ZKIR byte buffer and proving key (prove_exposure_within_limit.prover).
+  - Synthesizes the final Groth16/Plonk zero-knowledge SNARK proof envelope.
+```
+
+> **Technical Honesty Note**: The ~300–450ms latency measured in the Telemetry Card represents **Stage 1 (in-browser Compact ZKIR constraint synthesis, witness binding, and cryptographic hash evaluation)** via the compiled WebAssembly Compact runtime. In standalone client mode, Stage 1 evaluates every genuine circuit assertion and cryptographic primitive. When connected to the local Docker test harness (`midnightnetwork/proof-server:latest`), the resulting ZKIR is submitted to Stage 2 to synthesize the complete SNARK proof artifact.
 
 ---
 
-## 3. Accumulator Design & Scalability
+## 3. Known Wave 1 Limitations & Wave 2 Architecture Roadmap
 
-### Wave 1 Linear Hash Chain
-In the current implementation, anti-omission is enforced by a linear hash chain accumulator over `Vector<8, PrivateLoanRecord>`. The prover must include both active and closed loans in the witness to reproduce the on-chain root.
+### A. The `Vector<8, ...>` Witness Cap & The 9th Lifetime Loan
 
-- **Array Capacity**: `Vector<8>` supports up to 8 lifetime loans per borrower.
-- **Microfinance Suitability**: In typical Indian microfinance credit cycles, borrowers carry 1 to 2 concurrent loans and fewer than 6 lifetime credit cycles.
+* **Current Wave 1 Implementation**:
+  In `contracts/src/exposure-proof.compact`, the borrower witness is defined as `Vector<8, PrivateLoanRecord>`. To enforce anti-omission and verify that no active loans are hidden, the circuit folds over the historical sequence of all registered loans (both `ACTIVE` and `CLOSED`) and asserts that `running_root == borrower_portfolios[borrower_id]`.
+* **The 9th Loan Boundary**:
+  Because `Vector<8, ...>` is a fixed-capacity compile-time array in Compact 0.31.1, a borrower taking their 9th lifetime loan will exceed the array bounds if attempting to pass all 9 lifetime loans in the linear fold.
+* **Why This Was Chosen for Wave 1**:
+  Indian microfinance borrowers typically have 1–2 concurrent active loans and under 5 lifetime credit cycles in initial onboarding phases. Vector<8> fits within Compact compile-time constraints while keeping circuit synthesis times under 500ms.
+* **Wave 2 Architectural Fix (Sparse Merkle Tree Accumulator)**:
+  In Wave 2, Vantage will transition from a linear hash-chain accumulator ($O(n)$ witness size) to a **Sparse Merkle Tree (SMT)** or **Poseidon Merkle Tree** of depth 32:
+  1. **On Registration**: The issuing MFI inserts the loan commitment into the borrower's on-chain Sparse Merkle Tree leaf at index $k$, updating the Merkle root in $O(\log n)$ constraints.
+  2. **In `prove_exposure_within_limit`**: The borrower only needs to supply their **active loans** plus their $O(\log n)$ Merkle membership proofs (siblings). Repaid/closed loans do not need to be loaded into the witness vector at all.
+  3. **Capacity**: Supports $2^{32} \approx 4.29\times 10^9$ lifetime loans per borrower with constant witness overhead.
 
-### Wave 2 Sparse Merkle Tree (SMT)
-For production deployments exceeding 8 lifetime loans, the linear fold will be replaced with an on-chain Sparse Merkle Tree (depth 32):
-1. **Registration**: Lenders insert new commitments into the borrower's SMT leaf at index `k`, updating the root in $O(\log n)$ constraints.
-2. **Exposure Proof**: Borrowers only supply active loans along with their $O(\log n)$ Merkle membership paths. Repaid/closed loans do not need to be loaded into the witness vector.
-3. **Capacity**: Supports up to $2^{32} \approx 4.29 \times 10^9$ lifetime loans per borrower with constant witness overhead.
+### B. Wave 1 Nonce Transfer Simplification
+
+* **Wave 1 (Current)**:
+  As documented in PRD §8.1, the borrower manually copies the 32-byte secret `loan_nonce` entropy salt from the Issuer result panel into their local browser vault (or uses the 1-click import button).
+* **Wave 2**:
+  Implementation of automated off-chain encrypted messaging via DID Comm / libp2p or Midnight private state channels, delivering encrypted nonces directly into the borrower's mobile wallet upon loan disbursement.
 
 ---
 
-## 4. Disclaimer
+## 4. Institutional Disclaimer
 
-Institution names used in test scenarios and documentation (Bandhan MFI, Fusion Microfinance, CreditAccess Grameen) are illustrative examples to model Indian microfinance regulations. No commercial relationship or affiliation is implied.
+* **Illustrative Scenario Data**:
+  MFI institution names used in test suites, preset demonstration scenarios, and documentation (e.g., *Bandhan MFI*, *Fusion Microfinance*, *CreditAccess Grameen*) are referenced strictly for illustrative and educational purposes to reflect real-world Indian microfinance lending regulations. No commercial partnership, endorsement, or institutional affiliation is implied.

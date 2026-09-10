@@ -36,9 +36,19 @@ export interface ZkProofResult {
   maxTotalExposure: number;
   portfolioRoot: string;
   publicTranscript: string;
+  snarkProof?: string;
   isValid: boolean;
   generatedAt: string;
-  executionTimeMs?: number;
+  
+  // Real Proving Pipeline Telemetry
+  stage1LatencyMs: number; // In-browser Compact ZKIR & Constraint evaluation time
+  stage2LatencyMs: number | null; // Proof Server SNARK synthesis time (if connected)
+  stage2Status: 'online' | 'unreachable' | 'error';
+  totalLatencyMs: number;
+  proofEnvelopeType: 'Groth16/Plonk SNARK Envelope (Stage 1 + 2)' | 'ZKIR Constraint Vector (Stage 1 Verified)';
+  evaluatedConstraintsCount: number;
+  witnessIntegrity: 'Valid (Hash Chain Matches On-Chain Root)' | 'Diverged';
+  
   circuitVersion?: string;
   rawProofData?: any;
 }

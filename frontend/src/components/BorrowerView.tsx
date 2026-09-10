@@ -21,6 +21,7 @@ import {
   Zap,
   Activity,
   Layers,
+  Server,
 } from 'lucide-react';
 import { LoanStatus, type PrivateLoanRecord } from '@/lib/types';
 
@@ -395,7 +396,7 @@ export const BorrowerView: React.FC = () => {
               <div className="mt-4 rounded-xl border border-emerald-300/60 bg-emerald-50/80 p-3.5 text-xs text-emerald-950 animate-pulse">
                 <div className="font-bold flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-emerald-600 animate-ping"></div>
-                  Prover Execution Progress
+                  Prover Execution Pipeline
                 </div>
                 <div className="font-mono text-[11px] text-emerald-800 mt-1 font-semibold">
                   {proofProgressStep}
@@ -419,7 +420,7 @@ export const BorrowerView: React.FC = () => {
               </div>
             )}
 
-            {/* Proof Result Package & Telemetry */}
+            {/* Proof Result Package & Detailed Multi-Stage Telemetry */}
             {lastGeneratedProof && !proofError && (
               <div className="mt-5 rounded-2xl border-2 border-emerald-600/30 bg-gradient-to-b from-slate-900 to-emerald-950 p-5 text-white shadow-xl space-y-4">
                 <div className="flex items-center justify-between">
@@ -432,17 +433,56 @@ export const BorrowerView: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Telemetry Badge */}
-                <div className="flex items-center justify-between rounded-lg bg-emerald-900/40 border border-emerald-700/40 px-3 py-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-emerald-200">
-                    <Zap className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Execution Latency:</span>
-                    <strong className="font-mono text-white">{lastGeneratedProof.executionTimeMs || 342} ms</strong>
+                {/* Multi-Stage Telemetry Breakdown Card */}
+                <div className="rounded-xl bg-black/50 border border-emerald-500/30 p-3.5 space-y-2.5 text-xs">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300/80 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Zap className="h-3.5 w-3.5 text-amber-400" />
+                      Proving Pipeline Latency Breakdown
+                    </span>
+                    <span className="font-mono font-bold text-white">
+                      Total: {lastGeneratedProof.totalLatencyMs} ms
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-emerald-200">
-                    <Activity className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>ZK Soundness:</span>
-                    <strong className="font-mono text-emerald-300">100%</strong>
+
+                  <div className="space-y-1.5 text-[11px] font-mono">
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="flex items-center gap-1">
+                        <Cpu className="h-3 w-3 text-emerald-400" />
+                        Stage 1: WASM ZKIR & Constraints:
+                      </span>
+                      <strong className="text-emerald-300">{lastGeneratedProof.stage1LatencyMs} ms</strong>
+                    </div>
+
+                    <div className="flex justify-between items-center text-slate-300">
+                      <span className="flex items-center gap-1">
+                        <Server className="h-3 w-3 text-indigo-400" />
+                        Stage 2: Proof Server (port 6300):
+                      </span>
+                      {lastGeneratedProof.stage2LatencyMs !== null ? (
+                        <strong className="text-emerald-300">{lastGeneratedProof.stage2LatencyMs} ms</strong>
+                      ) : (
+                        <span className="text-amber-400 text-[10px]">
+                          Standalone Mode (Docker Standby)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Derived Cryptographic Verification Properties */}
+                  <div className="pt-2 border-t border-emerald-900/60 space-y-1 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Proof Envelope:</span>
+                      <span className="font-bold text-emerald-300 text-[10px]">{lastGeneratedProof.proofEnvelopeType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Evaluated Constraints:</span>
+                      <span className="font-bold text-white">{lastGeneratedProof.evaluatedConstraintsCount} Verified (0 Violations)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Witness Accumulator:</span>
+                      <span className="font-bold text-emerald-300">{lastGeneratedProof.witnessIntegrity}</span>
+                    </div>
                   </div>
                 </div>
 

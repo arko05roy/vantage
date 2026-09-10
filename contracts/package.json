@@ -7,15 +7,16 @@
   "scripts": {
     "compact:compile": "compact compile src/exposure-proof.compact src/managed/exposure-proof",
     "build": "tsc",
+    "deploy": "tsx scripts/deploy.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0",
-    "vantage": "file:.."
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.0",
+    "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }

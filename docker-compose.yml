@@ -1,0 +1,38 @@
+services:
+  # Midnight Zero-Knowledge Proof Server
+  proof-server:
+    image: midnightnetwork/proof-server:latest
+    container_name: vantage-proof-server
+    ports:
+      - "6300:6300"
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+
+  # Midnight Local Indexer / Standalone Node simulation
+  midnight-node:
+    image: midnightnetwork/midnight-node:latest
+    container_name: vantage-midnight-node
+    ports:
+      - "9944:9944"
+      - "9933:9933"
+    environment:
+      - RUST_LOG=info
+    command: ["--dev", "--rpc-external", "--ws-external"]
+    restart: unless-stopped
+
+  # Vantage Next.js Web Frontend & Prover UI
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vantage-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_PROOF_SERVER_URL=http://localhost:6300
+      - NEXT_PUBLIC_MIDNIGHT_NODE_URL=ws://localhost:9944
+      - NODE_ENV=production
+    depends_on:
+      - proof-server
+    restart: unless-stopped

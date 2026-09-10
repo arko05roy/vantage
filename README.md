@@ -4,26 +4,8 @@
 [![Midnight Network](https://img.shields.io/badge/Midnight-Dual--Ledger-purple.svg)](https://docs.midnight.network/)
 [![Compact Version](https://img.shields.io/badge/Compact%20Compiler-0.31.1-green.svg)](https://docs.midnight.network/)
 [![Node.js Version](https://img.shields.io/badge/Node.js-22%20LTS-brightgreen.svg)](https://nodejs.org/)
-[![GitHub Label](https://img.shields.io/badge/GitHub%20Topic-midnightntwrk-blueviolet.svg)](https://github.com/topics/midnightntwrk)
 
-**Vantage** resolves the systemic over-lending challenge in India's ₹4.0 lakh crore ($48B USD) microfinance sector (NBFC-MFIs) by enabling borrowers to cryptographically prove compliance with Reserve Bank of India (RBI) exposure limits without revealing their loan amounts, lender identities, or personal financial history.
-
-> **Midnight Network WaveHack 2026 Submission**  
-> *Track: Privacy-Preserving Real-World DeFi / RegTech*  
-> *GitHub Topic Label: `midnightntwrk`*  
-> *License: Apache License 2.0*
-
----
-
-## 🏆 Submission & Evaluation Index
-
-| Document | Description |
-|---|---|
-| 📋 [**Evaluation Guide & Judge Runbook**](EVALUATION_GUIDE.md) | 5-minute step-by-step testing instructions & preset walkthroughs |
-| 📊 [**Pitch Slide Deck**](SLIDEDECK.md) | 10-slide presentation on market context, architecture, & impact |
-| 🎬 [**Demo Video Pitch Script**](DEMO_SCRIPT.md) | 3-minute narration script with visual timestamps |
-| 📈 [**Wave 1 Progress Report**](WAVE1_PROGRESS.md) | Detailed breakdown of Wave 1 development milestones |
-| 🏛️ [**Technical Architecture Guide**](ARCHITECTURE.md) | Deep dive into ZK circuits, prover pipeline, & Wave 2 roadmap |
+**Vantage** resolves the systemic over-lending challenge in India's microfinance sector (NBFC-MFIs) by enabling borrowers to cryptographically prove compliance with Reserve Bank of India (RBI) exposure limits without revealing their loan amounts, lender identities, or personal financial history.
 
 ---
 
@@ -38,12 +20,12 @@ Existing credit bureaus (CIBIL, CRIF High Mark, Equifax) centralize unencrypted 
 **Vantage implements a zero-knowledge dual-ledger model on Midnight Network:**
 $$\text{active\_loan\_count} \le \text{MAX\_LENDERS} \quad \land \quad \text{total\_exposure} \le \text{REGULATORY\_CAP}$$
 
-* **On-Chain Public State (Midnight Blockchain)**:
+* **On-Chain Public State**:
   * `loan_commitments: Set<Bytes<32>>` — Cryptographic Pedersen-like hashes (`persistentHash([borrower_id, lender_id, amount, nonce])`).
   * `nullifiers: Set<Bytes<32>>` — Double-repayment prevention guards.
   * `borrower_portfolios: Map<Bytes<32>, Bytes<32>>` — Anti-omission accumulator hash chain roots.
-* **Off-Chain Private Witness (Browser Vault)**:
-  * Raw loan records `{ lender_id, amount, nonce, status }` remain strictly inside the borrower's local device.
+* **Off-Chain Private Witness**:
+  * Raw loan records `{ lender_id, amount, nonce, status }` remain strictly inside the borrower's local browser vault.
 
 ---
 
@@ -100,7 +82,7 @@ docker compose up -d
 
 When the borrower clicks **"Generate ZK Compliance Proof"**, the application executes a two-stage zero-knowledge proving pipeline:
 
-1. **Stage 1 (Client-Side Witness Synthesis & ZKIR Trace)** (~150–350ms):
+1. **Stage 1 (Client-Side Witness Synthesis & ZKIR Trace)** (~300–450ms):
    * Executed directly in-browser using `@midnight-ntwrk/compact-runtime` WebAssembly.
    * Evaluates all mathematical circuit assertions (`assert`, `persistentHash`, `member`, `isEmpty`, accumulator folding, and exposure inequalities).
    * Generates the Zero-Knowledge Intermediate Representation (ZKIR) byte buffer (`prove_exposure_within_limit.bzkir`) and `publicTranscript`.

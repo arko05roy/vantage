@@ -21,15 +21,11 @@
 
 ---
 
-## 🌐 Preprod Deployment
+## 🌐 | Contract | Address | Transaction / block |
+|----------|---------|---------------------|
+| **Exposure Proof** (`exposure.compact`) | [`b3b8f32f51d28ca2265e29da8be2d08cd5c20ae4152adfdd452bdee9fc6242e3`](https://preprod.midnightexplorer.com/contracts/0xb3b8f32f51d28ca2265e29da8be2d08cd5c20ae4152adfdd452bdee9fc6242e3) | `c5a9d20d3719b1cfb1ee471999c47c382d370cbe860b0a99bac9a641495d6bbd` / `1784908` |
 
-The `exposure-proof` Compact contract is deployed to the Midnight **Preprod**
-network and verifiable on-chain via the public indexer
-(`https://indexer.preprod.midnight.network/api/v4/graphql`).
 
-* **Contract address**: see [`contracts/deployment.preprod.json`](contracts/deployment.preprod.json)
-* **Verification**: query `contractAction(address: "<address>", offset: null)` on the indexer, or look the address up on [midnightexplorer.com](https://preprod.midnightexplorer.com/) / [midnight-preprod.subscan.io](https://midnight-preprod.subscan.io/)
-* **Redeploy**: `SEED=<64-hex> npm run deploy:preprod` (see `contracts/scripts/deploy-preprod.ts`)
 
 ---
 

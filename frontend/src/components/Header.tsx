@@ -2,9 +2,55 @@
 
 import React, { useState } from 'react';
 import { useVantageStore } from '@/lib/store';
+import { LACE_INSTALL_URL } from '@/lib/lace-wallet';
 import Image from 'next/image';
 
 type Tab = 'issuer' | 'borrower' | 'verifier' | 'explainer';
+
+const truncateAddress = (addr: string) =>
+  addr.length > 24 ? `${addr.slice(0, 20)}…${addr.slice(-6)}` : addr;
+
+const WalletButton: React.FC<{ className?: string }> = ({ className }) => {
+  const { laceInstalled, walletStatus, walletConnection, walletError, connectWallet, disconnectWallet } =
+    useVantageStore();
+
+  if (!laceInstalled) {
+    return (
+      <a
+        href={LACE_INSTALL_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`rounded-md border border-outline-variant px-2.5 py-1 text-2xs font-semibold text-on-surface-v transition hover:bg-surface-container ${className ?? ''}`}
+        title="Install the Midnight Lace wallet extension"
+      >
+        Install Lace
+      </a>
+    );
+  }
+
+  if (walletStatus === 'connected' && walletConnection) {
+    return (
+      <button
+        onClick={disconnectWallet}
+        className={`rounded-md border border-primary/40 bg-primary-light px-2.5 py-1 font-mono text-2xs font-semibold text-primary transition hover:bg-primary-dim/20 ${className ?? ''}`}
+        title={`${walletConnection.shieldedAddress} — click to disconnect`}
+      >
+        ⬤ {truncateAddress(walletConnection.shieldedAddress)}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={connectWallet}
+      disabled={walletStatus === 'connecting'}
+      className={`rounded-md border border-primary/40 bg-primary px-2.5 py-1 text-2xs font-semibold text-white transition hover:bg-primary-dim disabled:opacity-60 ${className ?? ''}`}
+      title={walletError ?? 'Connect Midnight Lace wallet (Preprod)'}
+    >
+      {walletStatus === 'connecting' ? 'Connecting…' : 'Connect Lace'}
+    </button>
+  );
+};
 
 const tabs: { id: Tab; label: string }[] = [
   { id: 'issuer',    label: 'Issuer' },
@@ -32,7 +78,7 @@ export const Header: React.FC = () => {
         <div className="mx-auto flex max-w-container items-center justify-between py-1.5">
           <span className="flex items-center gap-2 text-2xs font-medium text-primary-dim tracking-wide">
             <span className="h-1.5 w-1.5 rounded-full bg-primary-dim animate-proof" />
-            Midnight Preview Testnet
+            Midnight Preprod
           </span>
           <span className="font-mono text-2xs text-primary-dim/80">
             Commitments:&nbsp;
@@ -107,9 +153,12 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
+        {/* ── Wallet connect (always visible) ─────────────────────────── */}
+        <WalletButton className="hidden md:inline-flex" />
+
         {/* ── Mobile hamburger ────────────────────────────────────────── */}
         <button
-          className="md:hidden rounded-lg border border-outline-variant p-2 text-on-surface-v"
+          className="md:hidden rounded-lg border border-outline-variant p-2 text-on-surface-v ml-auto"
           onClick={() => setMenuOpen((o) => !o)}
           aria-label="Toggle menu"
         >
@@ -160,6 +209,7 @@ export const Header: React.FC = () => {
               className="rounded-md border border-outline-variant px-2.5 py-1 text-2xs font-semibold text-on-surface-v">
               Reset
             </button>
+            <WalletButton />
           </div>
         </div>
       )}

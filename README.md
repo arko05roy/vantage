@@ -1,5 +1,6 @@
 # Vantage — Privacy-Preserving Credit Exposure Oracle on Midnight
 
+[![CI](https://github.com/arko05roy/vantage/actions/workflows/ci.yml/badge.svg)](https://github.com/arko05roy/vantage/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black.svg?logo=vercel)](https://vantage-midnightwrk.vercel.app/)
 [![Midnight Network](https://img.shields.io/badge/Midnight-Dual--Ledger-purple.svg)](https://docs.midnight.network/)
@@ -17,6 +18,28 @@
 * 🌐 **Live Web Application**: [https://vantage-midnightwrk.vercel.app/](https://vantage-midnightwrk.vercel.app/)
 * 🎥 **Video Demo Walkthrough**: [Watch on YouTube](https://www.youtube.com/watch?v=fjpweqd8ntU)
 * 📊 **Presentation Slide Deck**: [View on Google Slides](https://docs.google.com/presentation/d/1FWppOp8hFJ8qjXGI31EL0wIbHy5VHDlIs0LvuDmvWDc/edit?usp=sharing)
+
+---
+
+## 🌐 Preprod Deployment
+
+The `exposure-proof` Compact contract is deployed to the Midnight **Preprod**
+network and verifiable on-chain via the public indexer
+(`https://indexer.preprod.midnight.network/api/v4/graphql`).
+
+* **Contract address**: see [`contracts/deployment.preprod.json`](contracts/deployment.preprod.json)
+* **Verification**: query `contractAction(address: "<address>", offset: null)` on the indexer, or look the address up on [midnightexplorer.com](https://preprod.midnightexplorer.com/) / [midnight-preprod.subscan.io](https://midnight-preprod.subscan.io/)
+* **Redeploy**: `SEED=<64-hex> npm run deploy:preprod` (see `contracts/scripts/deploy-preprod.ts`)
+
+---
+
+## 👛 Lace Wallet Connection
+
+The dApp integrates the Midnight **DApp Connector API** — click **Connect Lace**
+in the header to authorize the app, view your shielded/unshielded/DUST
+addresses, and disconnect at any time. Requires the
+[Lace wallet extension](https://chromewebstore.google.com/detail/lace/gafhhkghbfjjkeiendhlofajokpaflmk)
+set to the **Preprod** network.
 
 ---
 
@@ -71,6 +94,31 @@ While guaranteeing **zero disclosure** of individual loan amounts or institution
 
 ---
 
+## 🔐 Privacy Model — What an Observer Can and Cannot Learn
+
+Vantage uses Midnight's dual-ledger model: the public ledger stores only
+cryptographic artifacts (commitments, nullifiers, accumulator roots), while all
+sensitive inputs live exclusively in the borrower's client-side private vault
+and are consumed as ZK witnesses.
+
+| Data | Observer on-chain / verifier CAN learn | Observer CANNOT learn |
+|---|---|---|
+| **Regulatory eligibility** | `active_lenders ≤ 2` and `total_exposure ≤ ₹1,00,000` — proven and publicly verifiable | — |
+| **Borrower identity** | Only `borrower_id` (a 32-byte pseudonymous identifier) | Name, Aadhaar, or any PII |
+| **Loan amounts** | Nothing | Individual amounts and the exact total (only that it is ≤ cap) |
+| **Lender identities** | Nothing | Which institutions hold the loans, or how many distinct names map to commitments |
+| **Loan lifecycle** | That *some* commitment was created/closed (set membership events) | Which borrower/lender/amount a commitment encodes |
+| **Portfolio completeness** | The accumulator root match proves no registered loan was omitted | The contents folded into that root |
+
+**Observable privacy behavior in the dApp:** the Issuer tab's on-chain feed
+shows only `persistentHash` commitments and nullifiers; the Verifier tab
+receives a proof result containing *only* the compliance boolean and public
+transcript — the borrower's loan records never leave the browser's private
+state. A lender or regulator watching the chain sees hash sets and roots, never
+amounts or identities.
+
+---
+
 ## 🔒 Cryptographic Soundness & Guarantees
 
 1. **Anti-Omission Portfolio Accumulator**:
@@ -112,7 +160,7 @@ When generating a compliance proof, Vantage executes a two-stage proving pipelin
 ### 2. Install & Run Tests
 ```bash
 # Clone the repository
-git clone https://github.com/igabhix001/vantage.git
+git clone https://github.com/arko05roy/vantage.git
 cd vantage
 
 # Install workspace dependencies

@@ -17,6 +17,11 @@ import {
   type OffChainPrivateState,
 } from './midnight-client';
 import { requestSnarkProofFromProofServer } from './proof-server-client';
+import {
+  connectLaceWallet,
+  isLaceInstalled,
+  type LaceConnection,
+} from './lace-wallet';
 
 interface VantageStoreContextType {
   activeTab: 'issuer' | 'borrower' | 'verifier' | 'explainer';
@@ -64,6 +69,14 @@ interface VantageStoreContextType {
   // Repayment & Closure
   repayAndCloseLoan: (loan: PrivateLoanRecord) => Promise<void>;
 
+  // Lace wallet (Midnight DApp Connector API)
+  laceInstalled: boolean;
+  walletStatus: 'disconnected' | 'connecting' | 'connected';
+  walletConnection: LaceConnection | null;
+  walletError: string | null;
+  connectWallet: () => Promise<void>;
+  disconnectWallet: () => void;
+
   // Preset scenarios
   loadScenario: (scenario: 'compliant_2_loans' | 'compliant_1_loan' | 'exceeds_amount' | 'exceeds_lenders' | 'zero_loans') => void;
   resetAll: () => void;
@@ -92,6 +105,39 @@ export const VantageStoreProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Synchronized Compact Circuit Context
   const [circuitContext, setCircuitContext] = useState<any>(null);
+
+  // Lace wallet state
+  const [laceInstalled, setLaceInstalled] = useState<boolean>(false);
+  const [walletStatus, setWalletStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [walletConnection, setWalletConnection] = useState<LaceConnection | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Extension injection happens after window load; poll briefly.
+    setLaceInstalled(isLaceInstalled());
+    const t = setTimeout(() => setLaceInstalled(isLaceInstalled()), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const connectWallet = useCallback(async () => {
+    setWalletError(null);
+    setWalletStatus('connecting');
+    try {
+      const conn = await connectLaceWallet();
+      setWalletConnection(conn);
+      setWalletStatus('connected');
+    } catch (e: any) {
+      setWalletConnection(null);
+      setWalletStatus('disconnected');
+      setWalletError(e?.message ?? 'Wallet connection rejected');
+    }
+  }, []);
+
+  const disconnectWallet = useCallback(() => {
+    setWalletConnection(null);
+    setWalletStatus('disconnected');
+    setWalletError(null);
+  }, []);
 
   // Helper: Build 8-element padded witness array for Compact runtime
   const buildOffChainWitness = useCallback((bIdHex: string, loans: PrivateLoanRecord[]): OffChainPrivateState => {
@@ -445,6 +491,12 @@ export const VantageStoreProvider: React.FC<{ children: React.ReactNode }> = ({ 
         generateProof,
         verifyProof,
         repayAndCloseLoan,
+        laceInstalled,
+        walletStatus,
+        walletConnection,
+        walletError,
+        connectWallet,
+        disconnectWallet,
         loadScenario,
         resetAll,
       }}

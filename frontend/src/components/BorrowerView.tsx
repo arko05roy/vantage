@@ -103,7 +103,7 @@ export const BorrowerView: React.FC = () => {
         <div className="lg:col-span-7 space-y-5">
 
           {/* Portfolio summary */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <div className="flex items-center justify-between mb-1">
               <div>
                 <p className="text-2xs font-semibold uppercase tracking-wider text-outline mb-0.5">
@@ -152,7 +152,7 @@ export const BorrowerView: React.FC = () => {
           </div>
 
           {/* Loan list */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider">
                 Private Loan Records ({privateLoans.length})
@@ -225,7 +225,7 @@ export const BorrowerView: React.FC = () => {
           </div>
 
           {/* Add loan form */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider mb-1">
               Add Loan to Private Vault
             </h3>
@@ -299,7 +299,7 @@ export const BorrowerView: React.FC = () => {
 
         {/* ── Right: ZK Proof generator ──────────────────────────────────── */}
         <div className="lg:col-span-5 space-y-5">
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-sm font-bold text-on-surface">ZK Proof Generator</h3>
               <span className="rounded-md bg-surface-container px-2.5 py-1 font-mono text-2xs font-bold text-on-surface-v">
@@ -380,7 +380,7 @@ export const BorrowerView: React.FC = () => {
 
             {/* Result */}
             {lastGeneratedProof && !proofError && (
-              <div className="mt-5 rounded-xl bg-primary p-5 text-on-primary space-y-4">
+              <div className="mt-5 rounded-xl border border-primary-c bg-primary p-5 text-on-primary shadow-card-md space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-xs font-bold text-primary-dim">
                     <span className="h-2 w-2 rounded-full bg-primary-dim animate-proof" />
@@ -392,15 +392,15 @@ export const BorrowerView: React.FC = () => {
                 </div>
 
                 {/* Telemetry */}
-                <div className="rounded-lg bg-black/25 px-4 py-3 space-y-2 text-xs font-mono">
-                  <div className="flex justify-between text-primary-dim/80">
+                <div className="rounded-lg bg-black/30 border border-white/10 px-4 py-3 space-y-2 text-xs font-mono">
+                  <div className="flex justify-between text-primary-dim/90">
                     <span>Stage 1 — WASM ZKIR</span>
-                    <strong className="text-primary-dim">{lastGeneratedProof.stage1LatencyMs} ms</strong>
+                    <strong className="text-white">{lastGeneratedProof.stage1LatencyMs} ms</strong>
                   </div>
-                  <div className="flex justify-between text-primary-dim/80">
+                  <div className="flex justify-between text-primary-dim/90">
                     <span>Stage 2 — Proof server</span>
                     {lastGeneratedProof.stage2LatencyMs !== null ? (
-                      <strong className="text-primary-dim">{lastGeneratedProof.stage2LatencyMs} ms</strong>
+                      <strong className="text-white">{lastGeneratedProof.stage2LatencyMs} ms</strong>
                     ) : (
                       <span className="text-amber-300 text-2xs">Standalone mode (Docker offline)</span>
                     )}
@@ -409,10 +409,10 @@ export const BorrowerView: React.FC = () => {
                     <span className="text-white">Total latency</span>
                     <span className="text-white">{lastGeneratedProof.totalLatencyMs} ms</span>
                   </div>
-                  <div className="border-t border-white/10 pt-2 space-y-1 text-primary-dim/70">
+                  <div className="border-t border-white/10 pt-2 space-y-1 text-primary-dim/80">
                     <div className="flex justify-between">
                       <span>Proof envelope</span>
-                      <span className="text-primary-dim">{lastGeneratedProof.proofEnvelopeType}</span>
+                      <span className="text-white">{lastGeneratedProof.proofEnvelopeType}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Constraints evaluated</span>
@@ -429,8 +429,8 @@ export const BorrowerView: React.FC = () => {
 
                 {/* Proof ID */}
                 <div className="space-y-1 text-xs font-mono">
-                  <p className="text-2xs font-bold uppercase tracking-wider text-primary-dim/70">Proof reference ID</p>
-                  <div className="rounded-md bg-black/30 px-3 py-2 text-primary-dim break-all select-all text-2xs">
+                  <p className="text-2xs font-bold uppercase tracking-wider text-primary-dim/80">Proof reference ID</p>
+                  <div className="rounded-md bg-black/40 border border-white/10 px-3 py-2 text-primary-dim break-all select-all text-2xs">
                     {lastGeneratedProof.proofId}
                   </div>
                 </div>
@@ -456,7 +456,7 @@ export const BorrowerView: React.FC = () => {
 
           {/* Proof history placeholder (no emojis) */}
           {!lastGeneratedProof && (
-            <div className="card shadow-card text-center py-8">
+            <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card text-center py-8">
               <p className="text-xs text-outline mb-1 font-semibold">No proof generated yet</p>
               <p className="text-2xs text-outline/70">
                 Add loans to your vault, then click &ldquo;Generate ZK Compliance Proof&rdquo; above.

@@ -60,7 +60,7 @@ export const DualLedgerExplainer: React.FC = () => {
       {/* ── Two-ledger diagram ────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-8">
         {/* Public ledger */}
-        <div className="card border-primary/30 shadow-card">
+        <div className="rounded-xl border border-primary/30 bg-surface-bright p-6 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-on-surface">Public Ledger</h3>
             <span className="rounded-md bg-primary-light px-2.5 py-1 text-2xs font-bold text-primary">
@@ -120,7 +120,7 @@ export const DualLedgerExplainer: React.FC = () => {
         </div>
 
         {/* Private ledger */}
-        <div className="card border-outline-variant shadow-card">
+        <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-on-surface">Private Witness</h3>
             <span className="rounded-md bg-surface-high px-2.5 py-1 text-2xs font-bold text-outline">
@@ -137,7 +137,7 @@ export const DualLedgerExplainer: React.FC = () => {
                 <span className="text-outline text-2xs">[ no active loans ]</span>
               ) : (
                 <div className="space-y-1.5">
-                  {activeLoans.map((l, i) => (
+                  {activeLoans.map((l) => (
                     <div key={l.id} className="text-2xs text-on-surface-v">
                       <span className="font-semibold text-on-surface">{l.lender_name}</span>
                       &nbsp;·&nbsp;₹{Number(l.amount).toLocaleString('en-IN')}
@@ -161,7 +161,7 @@ export const DualLedgerExplainer: React.FC = () => {
       </div>
 
       {/* ── Step-by-step flow ─────────────────────────────────────── */}
-      <div className="card shadow-card mb-6">
+      <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card mb-6">
         <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider mb-6">
           End-to-End Flow
         </h3>
@@ -194,7 +194,7 @@ export const DualLedgerExplainer: React.FC = () => {
           { label: 'Runtime', value: '@midnight-ntwrk/compact-runtime 0.16.0', note: 'ZKIR simulation + Stage 1 execution' },
           { label: 'Proof server', value: 'midnightnetwork/proof-server', note: 'Docker port 6300 · Stage 2 SNARK' },
         ].map((item) => (
-          <div key={item.label} className="card shadow-card text-center">
+          <div key={item.label} className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card text-center">
             <p className="text-2xs font-bold uppercase tracking-wider text-outline mb-1">{item.label}</p>
             <p className="text-xs font-bold text-on-surface font-mono mb-0.5">{item.value}</p>
             <p className="text-2xs text-outline">{item.note}</p>

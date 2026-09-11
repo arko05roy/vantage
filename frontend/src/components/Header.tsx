@@ -45,18 +45,16 @@ export const Header: React.FC = () => {
 
       {/* ── Main bar ───────────────────────────────────────────────── */}
       <div className="mx-auto flex max-w-container items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        {/* Logo: V-mark only — show left ~30% of the wide PNG */}
+        {/* Logo — full image, no text addons */}
         <div className="flex-shrink-0">
-          <div className="relative h-9 w-9 overflow-hidden">
-            <Image
-              src="/logo.png"
-              alt="Vantage"
-              fill
-              sizes="36px"
-              className="object-cover object-left"
-              priority
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Vantage"
+            width={120}
+            height={36}
+            className="h-9 w-auto object-contain"
+            priority
+          />
         </div>
 
         {/* ── Desktop nav ────────────────────────────────────────────── */}

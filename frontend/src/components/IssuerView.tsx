@@ -65,7 +65,7 @@ export const IssuerView: React.FC = () => {
         {/* ── Left: Form ───────────────────────────────────────────────────── */}
         <div className="lg:col-span-7 space-y-5">
           {/* Registration form */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider mb-5">
               Loan Details
             </h3>
@@ -201,7 +201,7 @@ export const IssuerView: React.FC = () => {
           </div>
 
           {/* Commitments log */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider">
                 Public Ledger Commitments
@@ -243,7 +243,7 @@ export const IssuerView: React.FC = () => {
         {/* ── Right: Result panel ───────────────────────────────────────────── */}
         <div className="lg:col-span-5 space-y-5">
           {/* Latest disbursement result */}
-          <div className="card bg-primary text-on-primary shadow-card-md border-primary-c">
+          <div className="rounded-xl border border-primary-c bg-primary p-6 text-on-primary shadow-card-md">
             <div className="flex items-center justify-between mb-5">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-dim">
                 Latest result
@@ -256,20 +256,20 @@ export const IssuerView: React.FC = () => {
             {lastIssuedResult ? (
               <div className="space-y-4">
                 {/* Amount summary */}
-                <div className="rounded-lg bg-white/10 p-4">
+                <div className="rounded-lg bg-black/25 p-4 border border-white/10">
                   <p className="text-xs font-semibold text-primary-dim mb-0.5">Disbursed &amp; committed</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-white">
                     ₹{lastIssuedResult.amount.toLocaleString('en-IN')}
                   </p>
-                  <p className="text-xs text-primary-dim/80 mt-0.5">
-                    Lender: <strong>{lastIssuedResult.lenderName}</strong>
+                  <p className="text-xs text-primary-dim/90 mt-0.5">
+                    Lender: <strong className="text-white">{lastIssuedResult.lenderName}</strong>
                   </p>
                 </div>
 
                 {/* Commitment hash */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-2xs font-bold uppercase tracking-wider text-primary-dim/80">
+                    <span className="text-2xs font-bold uppercase tracking-wider text-primary-dim/90">
                       On-chain commitment (public)
                     </span>
                     <button
@@ -279,13 +279,13 @@ export const IssuerView: React.FC = () => {
                       {copied === 'res_comm' ? 'Copied' : 'Copy'}
                     </button>
                   </div>
-                  <div className="rounded-lg bg-black/30 px-3 py-2.5 font-mono text-xs text-primary-dim break-all select-all">
+                  <div className="rounded-lg bg-black/30 border border-white/10 px-3 py-2.5 font-mono text-xs text-primary-dim break-all select-all">
                     {lastIssuedResult.commitment}
                   </div>
                 </div>
 
                 {/* Nonce output */}
-                <div className="rounded-lg border border-amber-400/40 bg-amber-900/30 p-4">
+                <div className="rounded-lg border border-amber-400/40 bg-amber-950/40 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
                       Loan nonce — hand to borrower
@@ -297,7 +297,7 @@ export const IssuerView: React.FC = () => {
                       {copied === 'res_nonce' ? 'Copied' : 'Copy nonce'}
                     </button>
                   </div>
-                  <div className="rounded-md bg-black/50 px-3 py-2 font-mono text-xs text-amber-200 break-all select-all">
+                  <div className="rounded-md bg-black/50 border border-amber-500/20 px-3 py-2 font-mono text-xs text-amber-200 break-all select-all">
                     {lastIssuedResult.nonce}
                   </div>
                   <p className="mt-2 text-2xs text-amber-300/80 leading-relaxed">
@@ -314,14 +314,14 @@ export const IssuerView: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="py-12 text-center text-xs text-primary-dim/50">
+              <div className="py-12 text-center text-xs text-primary-dim/60">
                 Register a loan to see the cryptographic result here.
               </div>
             )}
           </div>
 
           {/* Privacy note */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-v mb-3">
               Dual-Ledger Privacy Guarantee
             </h4>

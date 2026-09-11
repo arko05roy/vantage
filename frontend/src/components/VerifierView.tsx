@@ -61,7 +61,7 @@ export const VerifierView: React.FC = () => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* ── Left: Proof input + verify ───────────────────────────── */}
         <div className="lg:col-span-7 space-y-5">
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider mb-5">
               Proof Package
             </h3>
@@ -133,7 +133,7 @@ export const VerifierView: React.FC = () => {
           </div>
 
           {/* On-chain state summary */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-v mb-4">
               On-Chain Ledger State
             </h4>
@@ -153,7 +153,7 @@ export const VerifierView: React.FC = () => {
         {/* ── Right: Result + disclosure matrix ───────────────────── */}
         <div className="lg:col-span-5 space-y-5">
           {/* Verification result */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-on-surface">Verification Status</h3>
               {result.verifiedAt && (
@@ -217,7 +217,7 @@ export const VerifierView: React.FC = () => {
           </div>
 
           {/* Privacy disclosure matrix */}
-          <div className="card shadow-card">
+          <div className="rounded-xl border border-outline-variant bg-surface-bright p-6 shadow-card">
             <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-v mb-4">
               Information Disclosure
             </h4>

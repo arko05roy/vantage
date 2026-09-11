@@ -2,227 +2,204 @@
 
 import React from 'react';
 import { useVantageStore } from '@/lib/store';
-import {
-  Layers,
-  Globe,
-  Lock,
-  Cpu,
-  ArrowRight,
-  ShieldCheck,
-  Hash,
-  Database,
-  Eye,
-  EyeOff,
-  Sparkles,
-} from 'lucide-react';
 import { LoanStatus } from '@/lib/types';
 
-export const DualLedgerExplainer: React.FC = () => {
-  const {
-    borrowerId,
-    privateLoans,
-    onChainCommitments,
-    onChainNullifiers,
-    onChainPortfolioRoots,
-  } = useVantageStore();
+const STEPS = [
+  {
+    number: '01',
+    actor: 'Lending Institution',
+    action: 'Register a loan',
+    detail:
+      'The MFI disburses a loan and calls the Compact circuit. The circuit writes a 32-byte SHA-256 commitment of (borrowerId, amount, nonce) to Midnight\'s public ledger. Nothing else — no name, no amount — is ever on-chain.',
+  },
+  {
+    number: '02',
+    actor: 'Borrower',
+    action: 'Build private witness',
+    detail:
+      'The borrower receives the secret nonce from the institution and adds the loan locally to their browser vault. The vault accumulates all loans into a portfolio root using a folded hash. This data never leaves the device.',
+  },
+  {
+    number: '03',
+    actor: 'Borrower',
+    action: 'Generate ZK proof',
+    detail:
+      'The Compact circuit (compiled to WASM) evaluates constraints: active_loan_count ≤ threshold_count AND total_exposure ≤ threshold_amount. If both pass, it produces a proof envelope that certifies compliance without revealing any individual loan value.',
+  },
+  {
+    number: '04',
+    actor: 'Verifying Lender',
+    action: 'Check proof',
+    detail:
+      'The verifier receives the proof ID and checks it against the on-chain accumulator root. They receive only a yes/no — compliant or non-compliant. No loan amounts, lender names, or PII is disclosed at any point.',
+  },
+];
 
-  const currentOnChainRoot = onChainPortfolioRoots.get(borrowerId);
+export const DualLedgerExplainer: React.FC = () => {
+  const { borrowerId, privateLoans, onChainCommitments, onChainNullifiers, onChainPortfolioRoots } =
+    useVantageStore();
+
+  const currentRoot = onChainPortfolioRoots.get(borrowerId);
+  const activeLoans = privateLoans.filter((l) => l.status === LoanStatus.ACTIVE);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
-      {/* Title & Context */}
+    <div className="mx-auto max-w-container px-4 py-8 sm:px-6">
+      {/* ── Page header ──────────────────────────────────────────── */}
       <div className="mb-8">
-        <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs uppercase tracking-wider">
-          <Layers className="h-4 w-4" />
-          Midnight Network Dual-Ledger Model (Fix 5 Architectural Visualizer)
-        </div>
-        <h2 className="font-headline text-3xl font-bold tracking-tight text-slate-900 mt-1">
-          Dual-Ledger Zero-Knowledge Architecture
-        </h2>
-        <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Midnight splits state into two distinct realms: <strong>Public On-Chain State</strong> (immutable, decentralized, shared ledger) and <strong>Private Off-Chain State</strong> (local witness data stored exclusively on client devices). Compact circuits bridge the two through zero-knowledge proofs.
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+          Architecture
+        </p>
+        <h2 className="text-2xl font-bold text-on-surface sm:text-3xl">How Vantage Works</h2>
+        <p className="mt-1 text-sm text-on-surface-v max-w-2xl">
+          Midnight splits state into two realms: a public ledger (hashes only) and a private local
+          witness (loan details on your device). Zero-knowledge circuits bridge them — you can prove
+          compliance without disclosing anything.
         </p>
       </div>
 
-      {/* 3-Column Interactive Architecture Diagram */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Left Realm: Public Ledger */}
-        <div className="lg:col-span-4 rounded-2xl border-2 border-emerald-800/30 bg-white p-6 shadow-card flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 font-mono text-xs font-bold text-emerald-900">
-                <Globe className="h-3.5 w-3.5 text-emerald-700" />
-                Public Ledger (On-Chain)
-              </span>
-              <span className="text-[11px] font-bold text-slate-400 uppercase">Visible to All</span>
-            </div>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Maintained on Midnight nodes. Stores only cryptographic hashes, nullifiers, and accumulator roots.
-            </p>
-
-            <div className="space-y-3 font-mono text-xs">
-              {/* loan_commitments */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <div className="flex justify-between text-slate-500 font-bold text-[11px] mb-1">
-                  <span>loan_commitments: Set&lt;Bytes&lt;32&gt;&gt;</span>
-                  <span className="text-emerald-800">{onChainCommitments.length}</span>
-                </div>
-                <div className="text-[10px] text-slate-400 space-y-1 max-h-20 overflow-y-auto">
-                  {onChainCommitments.length === 0 ? (
-                    <div>[Empty Set]</div>
-                  ) : (
-                    onChainCommitments.map((c, i) => (
-                      <div key={i} className="truncate text-emerald-900 font-semibold">
-                        {c.commitment.substring(0, 18)}...
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* nullifiers */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <div className="flex justify-between text-slate-500 font-bold text-[11px] mb-1">
-                  <span>nullifiers: Set&lt;Bytes&lt;32&gt;&gt;</span>
-                  <span className="text-emerald-800">{onChainNullifiers.length}</span>
-                </div>
-                <div className="text-[10px] text-slate-400 space-y-1 max-h-20 overflow-y-auto">
-                  {onChainNullifiers.length === 0 ? (
-                    <div>[Empty Set]</div>
-                  ) : (
-                    onChainNullifiers.map((n, i) => (
-                      <div key={i} className="truncate text-slate-700 font-semibold">
-                        {n.nullifier.substring(0, 18)}...
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* borrower_portfolios root */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <div className="flex justify-between text-slate-500 font-bold text-[11px] mb-1">
-                  <span>borrower_portfolios: Map</span>
-                  <span className="text-emerald-800">Active</span>
-                </div>
-                <div className="text-[10px] text-emerald-900 font-semibold truncate bg-white p-1 rounded border border-slate-200">
-                  {currentOnChainRoot || 'Genesis Root (0 loans)'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500">
-            <Eye className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Publicly auditable, zero PII</span>
-          </div>
-        </div>
-
-        {/* Center: Compact ZK Prover Circuit */}
-        <div className="lg:col-span-4 rounded-2xl border-2 border-emerald-600 bg-gradient-to-b from-emerald-950 via-slate-900 to-emerald-950 p-6 text-white shadow-xl flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl"></div>
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 font-mono text-xs font-bold text-emerald-300">
-                <Cpu className="h-3.5 w-3.5 text-emerald-400" />
-                Compact ZK Circuits
-              </span>
-              <span className="text-[11px] font-mono text-emerald-400 font-semibold">exposure-proof.compact</span>
-            </div>
-            <p className="text-xs text-emerald-200/80 mb-4 leading-relaxed">
-              ZK constraints executed inside the client browser. Synthesizes a cryptographic proof that witness values satisfy regulatory limits.
-            </p>
-
-            <div className="space-y-3 font-mono text-xs">
-              {/* Circuit 1 */}
-              <div className="rounded-xl bg-black/50 border border-emerald-500/30 p-3">
-                <div className="text-[11px] font-bold text-emerald-300">
-                  1. prove_exposure_within_limit()
-                </div>
-                <div className="text-[10px] text-slate-300 mt-1 space-y-0.5">
-                  <div>&bull; Reconstructs portfolio root</div>
-                  <div>&bull; Asserts running_root == on_chain_root</div>
-                  <div>&bull; active_count &le; 2 Lenders</div>
-                  <div>&bull; total_exposure &le; ₹1,00,000 INR</div>
-                </div>
-              </div>
-
-              {/* Circuit 2 */}
-              <div className="rounded-xl bg-black/50 border border-emerald-500/30 p-3">
-                <div className="text-[11px] font-bold text-emerald-300">
-                  2. register_loan() & close_loan()
-                </div>
-                <div className="text-[10px] text-slate-300 mt-1 space-y-0.5">
-                  <div>&bull; compute_loan_commitment(bId, lId, amt, nonce)</div>
-                  <div>&bull; compute_nullifier(comm, nonce)</div>
-                  <div>&bull; disclose(commitment) &rarr; on-chain Set</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-emerald-800/40 flex items-center justify-between text-[11px] text-emerald-300">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-              Soundness & Completeness
+      {/* ── Two-ledger diagram ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-8">
+        {/* Public ledger */}
+        <div className="card border-primary/30 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-on-surface">Public Ledger</h3>
+            <span className="rounded-md bg-primary-light px-2.5 py-1 text-2xs font-bold text-primary">
+              On-chain · Visible to all
             </span>
-            <span className="font-bold">Zero-Knowledge</span>
+          </div>
+
+          <div className="space-y-3 font-mono text-xs">
+            {/* Commitments */}
+            <div className="rounded-lg bg-surface-container border border-outline-variant p-3">
+              <div className="flex justify-between text-on-surface-v font-bold text-2xs mb-2 uppercase tracking-wider">
+                <span>loan_commitments</span>
+                <span className="text-primary">{onChainCommitments.length}</span>
+              </div>
+              {onChainCommitments.length === 0 ? (
+                <span className="text-outline text-2xs">[ empty ]</span>
+              ) : (
+                <div className="space-y-1 max-h-20 overflow-y-auto">
+                  {onChainCommitments.map((c, i) => (
+                    <div key={i} className="text-2xs text-primary truncate">
+                      {c.commitment.substring(0, 24)}…
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Nullifiers */}
+            <div className="rounded-lg bg-surface-container border border-outline-variant p-3">
+              <div className="flex justify-between text-on-surface-v font-bold text-2xs mb-2 uppercase tracking-wider">
+                <span>loan_nullifiers</span>
+                <span className="text-on-surface">{onChainNullifiers.length}</span>
+              </div>
+              {onChainNullifiers.length === 0 ? (
+                <span className="text-outline text-2xs">[ empty ]</span>
+              ) : (
+                <div className="space-y-1 max-h-16 overflow-y-auto">
+                  {onChainNullifiers.map((n, i) => (
+                    <div key={i} className="text-2xs text-on-surface-v truncate">{n.nullifier.substring(0, 24)}…</div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Portfolio root */}
+            <div className="rounded-lg bg-surface-container border border-outline-variant p-3">
+              <div className="text-on-surface-v font-bold text-2xs mb-2 uppercase tracking-wider">
+                borrower_portfolio_root
+              </div>
+              {currentRoot ? (
+                <div className="text-2xs text-primary break-all">{currentRoot}</div>
+              ) : (
+                <span className="text-outline text-2xs">[ not yet set ]</span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Right Realm: Private Client Vault */}
-        <div className="lg:col-span-4 rounded-2xl border-2 border-slate-300 bg-white p-6 shadow-card flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 font-mono text-xs font-bold text-slate-900">
-                <Lock className="h-3.5 w-3.5 text-slate-700" />
-                Private Witness (Off-Chain)
-              </span>
-              <span className="text-[11px] font-bold text-rose-600 uppercase">Local Only</span>
-            </div>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Stored exclusively in the borrower&apos;s local storage. Never transmitted over the internet or exposed to lenders.
-            </p>
-
-            <div className="space-y-3 font-mono text-xs">
-              {/* Borrower ID Witness */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <div className="flex justify-between text-slate-500 font-bold text-[11px] mb-1">
-                  <span>witness get_borrower_id()</span>
-                </div>
-                <div className="text-[10px] text-slate-800 font-semibold truncate bg-white p-1 rounded border border-slate-200">
-                  {borrowerId}
-                </div>
-              </div>
-
-              {/* Private Loan Records */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <div className="flex justify-between text-slate-500 font-bold text-[11px] mb-1">
-                  <span>witness get_loan_records(): Vector&lt;8&gt;</span>
-                  <span className="text-slate-800">{privateLoans.length} Loans</span>
-                </div>
-                <div className="text-[10px] text-slate-600 space-y-1 max-h-24 overflow-y-auto">
-                  {privateLoans.length === 0 ? (
-                    <div>[0 active loans in local vault]</div>
-                  ) : (
-                    privateLoans.map((l, i) => (
-                      <div key={i} className="flex justify-between items-center bg-white p-1 rounded border border-slate-100">
-                        <span className="font-bold text-slate-900">{l.lender_name}</span>
-                        <span className="font-bold text-emerald-800">₹{Number(l.amount).toLocaleString('en-IN')}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+        {/* Private ledger */}
+        <div className="card border-outline-variant shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-on-surface">Private Witness</h3>
+            <span className="rounded-md bg-surface-high px-2.5 py-1 text-2xs font-bold text-outline">
+              Off-chain · Only on your device
+            </span>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500">
-            <EyeOff className="h-3.5 w-3.5 text-rose-500" />
-            <span>Encrypted local storage, never shared</span>
+          <div className="space-y-3 font-mono text-xs">
+            <div className="rounded-lg bg-surface-container border border-outline-variant p-3">
+              <div className="text-on-surface-v font-bold text-2xs mb-2 uppercase tracking-wider">
+                private_loans ({activeLoans.length} active)
+              </div>
+              {activeLoans.length === 0 ? (
+                <span className="text-outline text-2xs">[ no active loans ]</span>
+              ) : (
+                <div className="space-y-1.5">
+                  {activeLoans.map((l, i) => (
+                    <div key={l.id} className="text-2xs text-on-surface-v">
+                      <span className="font-semibold text-on-surface">{l.lender_name}</span>
+                      &nbsp;·&nbsp;₹{Number(l.amount).toLocaleString('en-IN')}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <p className="text-amber-800 text-2xs font-bold uppercase tracking-wider mb-1.5">
+                Loan amounts — never on-chain
+              </p>
+              <p className="text-amber-700 text-2xs leading-relaxed">
+                The actual figures exist only here, in your browser&apos;s in-memory state. The ZK
+                circuit reads them to prove compliance, but publishes only a root hash.
+              </p>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Step-by-step flow ─────────────────────────────────────── */}
+      <div className="card shadow-card mb-6">
+        <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider mb-6">
+          End-to-End Flow
+        </h3>
+        <div className="space-y-0">
+          {STEPS.map((step, idx) => (
+            <div key={step.number} className="relative flex gap-5">
+              {/* Vertical line */}
+              {idx < STEPS.length - 1 && (
+                <div className="absolute left-5 top-10 bottom-0 w-px bg-outline-variant" />
+              )}
+              <div className="shrink-0 h-10 w-10 rounded-full border-2 border-primary bg-primary-light flex items-center justify-center font-mono text-xs font-bold text-primary z-10">
+                {step.number}
+              </div>
+              <div className="pb-8 min-w-0">
+                <p className="text-2xs font-bold uppercase tracking-wider text-outline mb-0.5">
+                  {step.actor}
+                </p>
+                <p className="text-sm font-bold text-on-surface mb-1">{step.action}</p>
+                <p className="text-xs text-on-surface-v leading-relaxed">{step.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tech spec ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          { label: 'ZK Circuit', value: 'Midnight Compact 0.31.1', note: 'Compiled to WASM' },
+          { label: 'Runtime', value: '@midnight-ntwrk/compact-runtime 0.16.0', note: 'ZKIR simulation + Stage 1 execution' },
+          { label: 'Proof server', value: 'midnightnetwork/proof-server', note: 'Docker port 6300 · Stage 2 SNARK' },
+        ].map((item) => (
+          <div key={item.label} className="card shadow-card text-center">
+            <p className="text-2xs font-bold uppercase tracking-wider text-outline mb-1">{item.label}</p>
+            <p className="text-xs font-bold text-on-surface font-mono mb-0.5">{item.value}</p>
+            <p className="text-2xs text-outline">{item.note}</p>
+          </div>
+        ))}
       </div>
     </div>
   );

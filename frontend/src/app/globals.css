@@ -2,48 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Fonts ─────────────────────────────────────────────── */
 :root {
-  --font-inter: 'Inter', system-ui, sans-serif;
   --font-manrope: 'Manrope', sans-serif;
-  --font-jetbrains-mono: 'JetBrains Mono', monospace;
+  --font-jetbrains: 'JetBrains Mono', monospace;
+  --color-primary:   #004532;
+  --color-primary-c: #065f46;
+  --color-bg:        #f7faf6;
+  --color-surface:   #ffffff;
+  --color-border:    #bec9c2;
+  --color-muted:     #6f7973;
 }
 
+html { scroll-behavior: smooth; }
+
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
-  font-family: var(--font-inter);
+  background-color: var(--color-bg);
+  color: #181c1a;
+  font-family: var(--font-manrope);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+/* ─── Mono utility ──────────────────────────────────────── */
+.font-data { font-family: var(--font-jetbrains); }
+
+/* ─── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: #ecefeb; }
+::-webkit-scrollbar-thumb  { background: #bec9c2; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #6f7973; }
+
+/* ─── Card base ─────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
 }
 
-/* Pulse animation for ZK Circuit active state */
-@keyframes zk-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.7;
-    transform: scale(1.02);
-  }
+/* ─── Focus ring ────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
-.animate-zk-pulse {
-  animation: zk-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* ─── Proof ping animation ──────────────────────────────── */
+@keyframes proof-ping {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
+.animate-proof { animation: proof-ping 1.6s ease-in-out infinite; }
+
+/* ─── Spinner ───────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }

@@ -2,28 +2,15 @@
 
 import React, { useState } from 'react';
 import { useVantageStore } from '@/lib/store';
-import {
-  Wallet,
-  Plus,
-  ShieldCheck,
-  Cpu,
-  Key,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  ArrowRight,
-  ClipboardPaste,
-  FileCheck,
-  Check,
-  Copy,
-  Trash2,
-  Lock,
-  Zap,
-  Activity,
-  Layers,
-  Server,
-} from 'lucide-react';
-import { LoanStatus, type PrivateLoanRecord } from '@/lib/types';
+import { LoanStatus } from '@/lib/types';
+
+const LENDERS = [
+  'Bandhan MFI',
+  'Fusion Microfinance',
+  'CreditAccess Grameen',
+  'Muthoot Microfin',
+  'Arohan Financial',
+];
 
 export const BorrowerView: React.FC = () => {
   const {
@@ -41,19 +28,22 @@ export const BorrowerView: React.FC = () => {
     setActiveTab,
   } = useVantageStore();
 
-  // Form State for manual loan entry (Fix 2)
-  const [lenderName, setLenderName] = useState<string>('Bandhan MFI');
-  const [amount, setAmount] = useState<number>(35000);
-  const [nonce, setNonce] = useState<string>('');
-
-  // Regulatory Thresholds (Fix 4: Defaults 2 lenders, ₹1,00,000)
-  const [maxLenders, setMaxLenders] = useState<number>(2);
-  const [maxAmount, setMaxAmount] = useState<number>(100000);
-
+  const [lenderName, setLenderName] = useState('Bandhan MFI');
+  const [amount, setAmount] = useState(35000);
+  const [nonce, setNonce] = useState('');
+  const [maxLenders, setMaxLenders] = useState(2);
+  const [maxAmount, setMaxAmount] = useState(100000);
   const [proofError, setProofError] = useState<string | null>(null);
-  const [copiedProof, setCopiedProof] = useState<boolean>(false);
+  const [copied, setCopied] = useState(false);
 
-  // Quick import from last issued result
+  const activeLoans = privateLoans.filter((l) => l.status === LoanStatus.ACTIVE);
+  const totalExposure = activeLoans.reduce((s, l) => s + Number(l.amount), 0);
+  const lenderCount = activeLoans.length;
+  const withinLimits = lenderCount <= maxLenders && totalExposure <= maxAmount;
+
+  const exposurePct = Math.min((totalExposure / maxAmount) * 100, 100);
+  const lenderPct = Math.min((lenderCount / maxLenders) * 100, 100);
+
   const handleImportFromIssuer = () => {
     if (lastIssuedResult) {
       setLenderName(lastIssuedResult.lenderName);
@@ -62,25 +52,18 @@ export const BorrowerView: React.FC = () => {
     }
   };
 
-  const handlePasteClipboard = async () => {
+  const handlePasteNonce = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text.startsWith('0x') && text.length === 66) {
+      if (text.trim().startsWith('0x') && text.trim().length === 66) {
         setNonce(text.trim());
-      } else {
-        alert('Clipboard does not contain a valid 32-byte (66-char) hex nonce.');
       }
-    } catch {
-      // Fallback
-    }
+    } catch { /* permission denied — ignore */ }
   };
 
   const handleAddLoan = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !nonce) {
-      alert('Please enter both amount and 32-byte secret nonce.');
-      return;
-    }
+    if (!nonce) return;
     addPrivateLoan(lenderName, amount, nonce.trim());
     setNonce('');
   };
@@ -94,448 +77,392 @@ export const BorrowerView: React.FC = () => {
     }
   };
 
-  const handleCopyProof = (proofJson: string) => {
-    navigator.clipboard.writeText(proofJson);
-    setCopiedProof(true);
-    setTimeout(() => setCopiedProof(false), 2000);
+  const handleCopyProof = () => {
+    if (!lastGeneratedProof) return;
+    navigator.clipboard.writeText(JSON.stringify(lastGeneratedProof, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  // Calculate local exposure metrics
-  const activeLoans = privateLoans.filter((l) => l.status === LoanStatus.ACTIVE);
-  const totalActiveExposure = activeLoans.reduce((sum, l) => sum + Number(l.amount), 0);
-  const isWithinLimits = activeLoans.length <= maxLenders && totalActiveExposure <= maxAmount;
-
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
-      {/* Title & Context */}
+    <div className="mx-auto max-w-container px-4 py-8 sm:px-6">
+      {/* ── Page header ──────────────────────────────────────────────── */}
       <div className="mb-8">
-        <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs uppercase tracking-wider">
-          <Wallet className="h-4 w-4" />
-          Borrower Local Private Vault & Zero-Knowledge Prover
-        </div>
-        <h2 className="font-headline text-3xl font-bold tracking-tight text-slate-900 mt-1">
-          Prove Regulatory Compliance Without Disclosing PII
-        </h2>
-        <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Your loan details, amounts, and lender identities are stored locally in your browser. The Compact circuit computes a mathematical zero-knowledge proof against the Midnight blockchain, proving compliance without disclosing your financial history.
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-1">
+          Borrower
+        </p>
+        <h2 className="text-2xl font-bold text-on-surface sm:text-3xl">Prove Your Exposure</h2>
+        <p className="mt-1 text-sm text-on-surface-v max-w-2xl">
+          Your loan details are stored only in your browser. Generate a zero-knowledge proof that you are
+          within regulatory limits — without revealing which lenders you have or how much you owe.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left Column: Private Loan Portfolio & Manual Entry */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Private Vault Portfolio Summary */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Client-Side Private State
-                </div>
-                <div className="font-headline text-lg font-bold text-slate-900 flex items-center gap-2 mt-0.5">
-                  <span>{borrowerName}</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                    <Lock className="h-3 w-3" />
-                    Vault Encrypted
-                  </span>
-                </div>
-              </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* ── Left: Private vault ──────────────────────────────────────── */}
+        <div className="lg:col-span-7 space-y-5">
 
-              <div className="flex items-center gap-4 text-right">
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">Active Loans</div>
-                  <div className={`font-mono text-base font-bold ${activeLoans.length > maxLenders ? 'text-rose-600' : 'text-slate-900'}`}>
-                    {activeLoans.length} / {maxLenders} Max
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">Total Exposure</div>
-                  <div className={`font-mono text-base font-bold ${totalActiveExposure > maxAmount ? 'text-rose-600' : 'text-emerald-800'}`}>
-                    ₹{totalActiveExposure.toLocaleString('en-IN')}
-                  </div>
-                </div>
+          {/* Portfolio summary */}
+          <div className="card shadow-card">
+            <div className="flex items-center justify-between mb-1">
+              <div>
+                <p className="text-2xs font-semibold uppercase tracking-wider text-outline mb-0.5">
+                  Private — only you can see this
+                </p>
+                <h3 className="text-base font-bold text-on-surface">{borrowerName}</h3>
               </div>
+              <span className="rounded-full border border-primary/30 bg-primary-light px-2.5 py-1 text-2xs font-bold text-primary">
+                Vault encrypted
+              </span>
             </div>
 
-            {/* Loans Table (Fix 6: Explicit Status Badges & Repay Button) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Private Loan Records ({privateLoans.length})
-                </span>
-                {lastIssuedResult && (
-                  <button
-                    type="button"
-                    onClick={handleImportFromIssuer}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded"
-                  >
-                    <ClipboardPaste className="h-3 w-3" />
-                    Import Last Issued Loan
-                  </button>
-                )}
+            {/* Exposure meters */}
+            <div className="mt-5 grid grid-cols-2 gap-4">
+              {/* Lenders */}
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="font-semibold text-on-surface-v">Active lenders</span>
+                  <span className={`font-mono font-bold ${lenderCount > maxLenders ? 'text-error' : 'text-on-surface'}`}>
+                    {lenderCount} / {maxLenders}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-surface-high overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${lenderCount > maxLenders ? 'bg-error' : 'bg-primary'}`}
+                    style={{ width: `${lenderPct}%` }}
+                  />
+                </div>
               </div>
-
-              {privateLoans.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
-                  Your private vault is empty (Zero Loans). Add a loan manually below or test the zero-loan proof generation.
+              {/* Amount */}
+              <div>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="font-semibold text-on-surface-v">Total exposure</span>
+                  <span className={`font-mono font-bold ${totalExposure > maxAmount ? 'text-error' : 'text-on-surface'}`}>
+                    ₹{totalExposure.toLocaleString('en-IN')}
+                  </span>
                 </div>
-              ) : (
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden bg-slate-50/50">
-                  {privateLoans.map((loan) => (
-                    <div key={loan.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:bg-slate-50/80 transition">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-slate-900">{loan.lender_name}</span>
-                          {/* Fix 6: Status Badges */}
-                          {loan.status === LoanStatus.ACTIVE ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600"></span>
-                              ACTIVE
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                              <CheckCircle className="h-3 w-3 text-slate-500" />
-                              REPAID / CLOSED
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] font-mono text-slate-500">
-                          <span>Amount: <strong className="text-slate-800">₹{Number(loan.amount).toLocaleString('en-IN')}</strong></span>
-                          <span>•</span>
-                          <span className="truncate max-w-[120px] text-slate-400">Nonce: {loan.nonce.substring(0, 10)}...</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        {/* Fix 6: Repay & Close Button */}
-                        {loan.status === LoanStatus.ACTIVE && (
-                          <button
-                            type="button"
-                            onClick={() => repayAndCloseLoan(loan)}
-                            className="rounded-lg border border-emerald-600/40 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-100 transition"
-                            title="Publishes nullifier on Midnight and updates loan to CLOSED"
-                          >
-                            Repay & Close
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removePrivateLoan(loan.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
-                          title="Remove from local view"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="h-1.5 w-full rounded-full bg-surface-high overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${totalExposure > maxAmount ? 'bg-error' : 'bg-primary'}`}
+                    style={{ width: `${exposurePct}%` }}
+                  />
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* Fix 2: Manual Loan Entry Form with Nonce Field */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
-            <h3 className="font-headline text-base font-bold text-slate-900 mb-1 flex items-center justify-between">
-              <span>Add Loan to Local Private Vault</span>
-              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                Wave 1 Manual Nonce Binding
-              </span>
+          {/* Loan list */}
+          <div className="card shadow-card">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider">
+                Private Loan Records ({privateLoans.length})
+              </h3>
+              {lastIssuedResult && (
+                <button
+                  onClick={handleImportFromIssuer}
+                  className="text-2xs font-semibold text-primary hover:underline"
+                >
+                  Import last issued loan
+                </button>
+              )}
+            </div>
+
+            {privateLoans.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-outline-variant py-10 text-center text-xs text-outline">
+                Your vault is empty. Add a loan using the form below, or use a Quick Test scenario.
+              </div>
+            ) : (
+              <div className="divide-y divide-outline-variant rounded-lg border border-outline-variant overflow-hidden">
+                {privateLoans.map((loan) => (
+                  <div
+                    key={loan.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-bright px-4 py-3 hover:bg-surface-low transition-colors"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-on-surface truncate">{loan.lender_name}</span>
+                        {loan.status === LoanStatus.ACTIVE ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary-light px-2 py-0.5 text-2xs font-bold text-primary">
+                            <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                            Active
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-surface-high px-2 py-0.5 text-2xs font-bold text-outline">
+                            Repaid
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 font-mono text-xs text-outline">
+                        <span>₹{Number(loan.amount).toLocaleString('en-IN')}</span>
+                        <span>·</span>
+                        <span className="truncate max-w-[120px]">nonce: {loan.nonce.substring(0, 10)}…</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      {loan.status === LoanStatus.ACTIVE && (
+                        <button
+                          onClick={() => repayAndCloseLoan(loan)}
+                          className="rounded-md border border-primary/30 bg-primary-light px-2.5 py-1 text-2xs font-bold text-primary hover:bg-primary-dim/20 transition"
+                        >
+                          Repay &amp; Close
+                        </button>
+                      )}
+                      <button
+                        onClick={() => removePrivateLoan(loan.id)}
+                        className="rounded-md p-1.5 text-outline hover:bg-error-container hover:text-error transition"
+                        title="Remove"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add loan form */}
+          <div className="card shadow-card">
+            <h3 className="text-sm font-bold text-on-surface-v uppercase tracking-wider mb-1">
+              Add Loan to Private Vault
             </h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Enter the loan amount and secret Nonce provided by the issuing MFI. This updates your local witness state without sending anything over the network.
+            <p className="text-xs text-outline mb-5">
+              Enter the loan details and the secret nonce provided by the issuing institution.
+              Nothing is sent over the network.
             </p>
 
             <form onSubmit={handleAddLoan} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                    Lender Name
+                  <label className="block text-xs font-semibold text-on-surface-v mb-1.5">
+                    Lender
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={lenderName}
                     onChange={(e) => setLenderName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none"
-                    required
-                  />
+                    className="w-full rounded-lg border border-outline-variant bg-surface-bright px-3 py-2.5 text-sm text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                    {LENDERS.map((l) => <option key={l}>{l}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                    Loan Amount (₹ INR)
+                  <label className="block text-xs font-semibold text-on-surface-v mb-1.5">
+                    Amount (INR)
                   </label>
                   <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 font-bold text-slate-400">
-                      ₹
-                    </span>
+                    <span className="absolute inset-y-0 left-3 flex items-center text-sm font-bold text-outline">₹</span>
                     <input
                       type="number"
-                      min="1000"
-                      step="1000"
+                      min={1000}
+                      step={1000}
                       value={amount}
                       onChange={(e) => setAmount(Number(e.target.value))}
-                      className="w-full rounded-lg border border-slate-200 pl-7 pr-3 py-2 text-sm font-bold text-slate-900 focus:border-emerald-600 focus:outline-none font-mono"
+                      className="w-full rounded-lg border border-outline-variant bg-surface-bright pl-7 pr-3 py-2.5 font-mono text-sm font-bold text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                       required
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Fix 2: Nonce Input Field with Paste Button */}
+              {/* Nonce */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-600">
-                    <Key className="h-3.5 w-3.5 text-amber-600" />
-                    Loan Nonce (Secret 32-Byte Hex)
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-on-surface-v">
+                    Loan Nonce (32-byte hex from issuer)
                   </label>
-                  <button
-                    type="button"
-                    onClick={handlePasteClipboard}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-emerald-800 hover:text-emerald-950"
-                  >
-                    <ClipboardPaste className="h-3 w-3" />
-                    Paste Nonce
+                  <button type="button" onClick={handlePasteNonce} className="text-2xs font-semibold text-primary hover:underline">
+                    Paste from clipboard
                   </button>
                 </div>
                 <input
                   type="text"
-                  placeholder="0x..."
+                  placeholder="0x…"
                   value={nonce}
                   onChange={(e) => setNonce(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono text-slate-800 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+                  className="w-full rounded-lg border border-outline-variant bg-surface-container px-3 py-2.5 font-mono text-xs text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-slate-800 transition"
+                className="w-full rounded-lg border border-outline-variant bg-surface-container py-2.5 text-sm font-bold text-on-surface hover:bg-surface-high transition"
               >
-                <Plus className="h-4 w-4" />
-                Add Loan to Private Witness
+                Add to Private Witness
               </button>
             </form>
           </div>
         </div>
 
-        {/* Right Column: Zero-Knowledge Proof Generator */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-headline text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Cpu className="h-5 w-5 text-emerald-700" />
-                ZK Proof Generator
-              </h3>
-              <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+        {/* ── Right: ZK Proof generator ──────────────────────────────────── */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="card shadow-card">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-sm font-bold text-on-surface">ZK Proof Generator</h3>
+              <span className="rounded-md bg-surface-container px-2.5 py-1 font-mono text-2xs font-bold text-on-surface-v">
                 Compact 0.31.1
               </span>
             </div>
 
-            {/* Threshold Configuration (Fix 4 Applied) */}
-            <div className="space-y-4 rounded-xl bg-slate-50 p-4 border border-slate-200/80 mb-5">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                RBI Regulatory Limit Parameters
-              </div>
-
+            {/* Thresholds */}
+            <div className="rounded-lg bg-surface-container border border-outline-variant p-4 mb-5">
+              <p className="text-2xs font-bold uppercase tracking-wider text-on-surface-v mb-3">
+                RBI Regulatory Limits
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                    Max Lenders Cap
-                  </label>
+                  <label className="block text-2xs font-semibold text-outline mb-1.5">Max lenders</label>
                   <input
                     type="number"
-                    min="1"
-                    max="8"
+                    min={1}
+                    max={8}
                     value={maxLenders}
                     onChange={(e) => setMaxLenders(Number(e.target.value))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-900 bg-white font-mono"
+                    className="w-full rounded-lg border border-outline-variant bg-surface-bright px-3 py-2 font-mono text-sm font-bold text-on-surface outline-none focus:border-primary"
                   />
-                  <span className="text-[10px] text-slate-400">Default: 2 Lenders</span>
+                  <p className="text-2xs text-outline mt-1">Default: 2</p>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                    Exposure Cap (₹)
-                  </label>
+                  <label className="block text-2xs font-semibold text-outline mb-1.5">Cap (₹)</label>
                   <input
                     type="number"
-                    step="5000"
+                    step={5000}
                     value={maxAmount}
                     onChange={(e) => setMaxAmount(Number(e.target.value))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold text-slate-900 bg-white font-mono"
+                    className="w-full rounded-lg border border-outline-variant bg-surface-bright px-3 py-2 font-mono text-sm font-bold text-on-surface outline-none focus:border-primary"
                   />
-                  <span className="text-[10px] text-slate-400">Default: ₹1,00,000</span>
+                  <p className="text-2xs text-outline mt-1">Default: ₹1,00,000</p>
                 </div>
               </div>
             </div>
 
-            {/* Prover Action Button */}
+            {/* Generate button */}
             <button
               type="button"
               disabled={isGeneratingProof}
               onClick={handleGenerateProof}
-              className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold text-white shadow-md transition ${
-                isWithinLimits
-                  ? 'bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900'
-                  : 'bg-gradient-to-r from-amber-700 to-slate-900 hover:from-amber-600'
-              } disabled:opacity-50`}
+              className={[
+                'w-full rounded-lg py-3 text-sm font-bold text-on-primary shadow-card transition disabled:opacity-50 flex items-center justify-center gap-2',
+                withinLimits ? 'bg-primary hover:bg-primary-c' : 'bg-error hover:bg-error/90',
+              ].join(' ')}
             >
               {isGeneratingProof ? (
                 <>
-                  <Cpu className="h-4 w-4 animate-spin text-emerald-300" />
-                  Synthesizing Zero-Knowledge Proof...
+                  <span className="inline-block h-4 w-4 rounded-full border-2 border-white border-t-transparent spin" />
+                  Synthesizing proof…
                 </>
               ) : (
-                <>
-                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                  Generate ZK Compliance Proof
-                </>
+                'Generate ZK Compliance Proof'
               )}
             </button>
 
-            {/* Real-time ZK synthesis steps */}
-            {isGeneratingProof && (
-              <div className="mt-4 rounded-xl border border-emerald-300/60 bg-emerald-50/80 p-3.5 text-xs text-emerald-950 animate-pulse">
-                <div className="font-bold flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-600 animate-ping"></div>
-                  Prover Execution Pipeline
-                </div>
-                <div className="font-mono text-[11px] text-emerald-800 mt-1 font-semibold">
-                  {proofProgressStep}
-                </div>
+            {/* Proof progress */}
+            {isGeneratingProof && proofProgressStep && (
+              <div className="mt-4 rounded-lg border border-primary/30 bg-primary-light px-4 py-3 text-xs text-primary animate-proof">
+                <p className="font-bold mb-0.5">Prover pipeline running</p>
+                <p className="font-mono text-2xs">{proofProgressStep}</p>
+                <p className="text-2xs text-primary/70 mt-1">
+                  Zero-knowledge proof runs entirely on your device — no loan data is sent anywhere.
+                </p>
               </div>
             )}
 
-            {/* Circuit Error / Assertion Failure */}
+            {/* Error */}
             {proofError && (
-              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-900 space-y-1.5">
-                <div className="font-bold flex items-center gap-1.5 text-rose-700">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  Proof Generation Rejected (Circuit Constraint Failed)
-                </div>
-                <p className="font-mono text-[11px] text-rose-800 leading-relaxed font-semibold">
-                  {proofError}
-                </p>
-                <p className="text-[11px] text-rose-600/90 pt-1">
-                  The Compact circuit mathematically verified on-chain commitments and rejected the witness constraints.
-                </p>
+              <div className="mt-4 rounded-lg border border-error/30 bg-error-container p-4 text-xs text-error space-y-1.5">
+                <p className="font-bold">Proof rejected — circuit constraint failed</p>
+                <p className="font-mono text-2xs leading-relaxed">{proofError}</p>
               </div>
             )}
 
-            {/* Proof Result Package & Detailed Multi-Stage Telemetry */}
+            {/* Result */}
             {lastGeneratedProof && !proofError && (
-              <div className="mt-5 rounded-2xl border-2 border-emerald-600/30 bg-gradient-to-b from-slate-900 to-emerald-950 p-5 text-white shadow-xl space-y-4">
+              <div className="mt-5 rounded-xl bg-primary p-5 text-on-primary space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
-                    <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="flex items-center gap-2 text-xs font-bold text-primary-dim">
+                    <span className="h-2 w-2 rounded-full bg-primary-dim animate-proof" />
                     ZK Proof Synthesized
                   </span>
-                  <span className="font-mono text-[11px] text-emerald-400/70">
+                  <span className="font-mono text-2xs text-primary-dim/70">
                     {lastGeneratedProof.generatedAt}
                   </span>
                 </div>
 
-                {/* Multi-Stage Telemetry Breakdown Card */}
-                <div className="rounded-xl bg-black/50 border border-emerald-500/30 p-3.5 space-y-2.5 text-xs">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300/80 flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      <Zap className="h-3.5 w-3.5 text-amber-400" />
-                      Proving Pipeline Latency Breakdown
-                    </span>
-                    <span className="font-mono font-bold text-white">
-                      Total: {lastGeneratedProof.totalLatencyMs} ms
-                    </span>
+                {/* Telemetry */}
+                <div className="rounded-lg bg-black/25 px-4 py-3 space-y-2 text-xs font-mono">
+                  <div className="flex justify-between text-primary-dim/80">
+                    <span>Stage 1 — WASM ZKIR</span>
+                    <strong className="text-primary-dim">{lastGeneratedProof.stage1LatencyMs} ms</strong>
                   </div>
-
-                  <div className="space-y-1.5 text-[11px] font-mono">
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span className="flex items-center gap-1">
-                        <Cpu className="h-3 w-3 text-emerald-400" />
-                        Stage 1: WASM ZKIR & Constraints:
-                      </span>
-                      <strong className="text-emerald-300">{lastGeneratedProof.stage1LatencyMs} ms</strong>
-                    </div>
-
-                    <div className="flex justify-between items-center text-slate-300">
-                      <span className="flex items-center gap-1">
-                        <Server className="h-3 w-3 text-indigo-400" />
-                        Stage 2: Proof Server (port 6300):
-                      </span>
-                      {lastGeneratedProof.stage2LatencyMs !== null ? (
-                        <strong className="text-emerald-300">{lastGeneratedProof.stage2LatencyMs} ms</strong>
-                      ) : (
-                        <span className="text-amber-400 text-[10px]">
-                          Standalone Mode (Docker Standby)
-                        </span>
-                      )}
-                    </div>
+                  <div className="flex justify-between text-primary-dim/80">
+                    <span>Stage 2 — Proof server</span>
+                    {lastGeneratedProof.stage2LatencyMs !== null ? (
+                      <strong className="text-primary-dim">{lastGeneratedProof.stage2LatencyMs} ms</strong>
+                    ) : (
+                      <span className="text-amber-300 text-2xs">Standalone mode (Docker offline)</span>
+                    )}
                   </div>
-
-                  {/* Derived Cryptographic Verification Properties */}
-                  <div className="pt-2 border-t border-emerald-900/60 space-y-1 text-[11px]">
+                  <div className="border-t border-white/10 pt-2 flex justify-between font-bold">
+                    <span className="text-white">Total latency</span>
+                    <span className="text-white">{lastGeneratedProof.totalLatencyMs} ms</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-2 space-y-1 text-primary-dim/70">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Proof Envelope:</span>
-                      <span className="font-bold text-emerald-300 text-[10px]">{lastGeneratedProof.proofEnvelopeType}</span>
+                      <span>Proof envelope</span>
+                      <span className="text-primary-dim">{lastGeneratedProof.proofEnvelopeType}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Evaluated Constraints:</span>
-                      <span className="font-bold text-white">{lastGeneratedProof.evaluatedConstraintsCount} Verified (0 Violations)</span>
+                      <span>Constraints evaluated</span>
+                      <span className="text-white">{lastGeneratedProof.evaluatedConstraintsCount} (0 violations)</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Witness Accumulator:</span>
-                      <span className="font-bold text-emerald-300">{lastGeneratedProof.witnessIntegrity}</span>
+                      <span>Threshold proven</span>
+                      <span className="text-white">
+                        &le;{lastGeneratedProof.maxLenderCount} lenders · &le;₹{lastGeneratedProof.maxTotalExposure.toLocaleString('en-IN')}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-black/40 border border-emerald-500/20 p-3 space-y-2 text-xs">
-                  <div className="flex justify-between font-mono text-[11px]">
-                    <span className="text-slate-400">Proof ID:</span>
-                    <span className="text-emerald-300 font-bold">{lastGeneratedProof.proofId}</span>
-                  </div>
-                  <div className="flex justify-between font-mono text-[11px]">
-                    <span className="text-slate-400">Threshold Proved:</span>
-                    <span className="text-white font-bold">
-                      &le; {lastGeneratedProof.maxLenderCount} Lenders &bull; &le; ₹{lastGeneratedProof.maxTotalExposure.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
-                      Portfolio Accumulator Root (Public)
-                    </span>
-                    <div className="font-mono text-[10px] text-emerald-200 break-all select-all bg-black/60 p-1.5 rounded border border-emerald-900/50">
-                      {lastGeneratedProof.portfolioRoot}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-bold text-slate-400 mb-1">
-                      Public Transcript Signature
-                    </span>
-                    <div className="font-mono text-[10px] text-emerald-200/80 break-all select-all bg-black/60 p-1.5 rounded border border-emerald-900/50">
-                      {lastGeneratedProof.publicTranscript.substring(0, 48)}...
-                    </div>
+                {/* Proof ID */}
+                <div className="space-y-1 text-xs font-mono">
+                  <p className="text-2xs font-bold uppercase tracking-wider text-primary-dim/70">Proof reference ID</p>
+                  <div className="rounded-md bg-black/30 px-3 py-2 text-primary-dim break-all select-all text-2xs">
+                    {lastGeneratedProof.proofId}
                   </div>
                 </div>
 
+                {/* Actions */}
                 <div className="flex gap-2">
                   <button
-                    type="button"
-                    onClick={() => handleCopyProof(JSON.stringify(lastGeneratedProof, null, 2))}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-900/40 px-3 py-2.5 text-xs font-bold text-emerald-200 hover:bg-emerald-800/50 transition"
+                    onClick={handleCopyProof}
+                    className="flex-1 rounded-lg border border-white/20 bg-white/10 py-2.5 text-xs font-bold text-white hover:bg-white/20 transition"
                   >
-                    {copiedProof ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                    Copy Proof Package
+                    {copied ? 'Copied' : 'Copy proof package'}
                   </button>
                   <button
-                    type="button"
                     onClick={() => setActiveTab('verifier')}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-bold text-slate-950 shadow-md hover:bg-emerald-400 transition"
+                    className="flex-1 rounded-lg bg-primary-dim py-2.5 text-xs font-bold text-primary hover:bg-primary-dim/80 transition"
                   >
-                    <span>Submit to Verifier</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    Submit to Verifier
                   </button>
                 </div>
               </div>
             )}
           </div>
+
+          {/* Proof history placeholder (no emojis) */}
+          {!lastGeneratedProof && (
+            <div className="card shadow-card text-center py-8">
+              <p className="text-xs text-outline mb-1 font-semibold">No proof generated yet</p>
+              <p className="text-2xs text-outline/70">
+                Add loans to your vault, then click &ldquo;Generate ZK Compliance Proof&rdquo; above.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

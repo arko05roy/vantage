@@ -7,59 +7,50 @@ import { IssuerView } from '@/components/IssuerView';
 import { BorrowerView } from '@/components/BorrowerView';
 import { VerifierView } from '@/components/VerifierView';
 import { DualLedgerExplainer } from '@/components/DualLedgerExplainer';
-import { ShieldCheck, Lock, ExternalLink, Info } from 'lucide-react';
 
 export default function Home() {
   const { activeTab } = useVantageStore();
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-900">
-      <div>
-        <Header />
+    <div className="min-h-screen flex flex-col bg-surface text-on-surface">
+      <Header />
 
-        <main className="pb-16">
-          {activeTab === 'issuer' && <IssuerView />}
-          {activeTab === 'borrower' && <BorrowerView />}
-          {activeTab === 'verifier' && <VerifierView />}
-          {activeTab === 'explainer' && <DualLedgerExplainer />}
-        </main>
-      </div>
+      <main className="flex-1 pb-16">
+        {activeTab === 'issuer'    && <IssuerView />}
+        {activeTab === 'borrower'  && <BorrowerView />}
+        {activeTab === 'verifier'  && <VerifierView />}
+        {activeTab === 'explainer' && <DualLedgerExplainer />}
+      </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8 px-4 sm:px-8 space-y-4">
-        <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-950 text-white">
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
+      <footer className="border-t border-outline-variant bg-surface-bright py-8 px-4 sm:px-6">
+        <div className="mx-auto max-w-container">
+          {/* Brand row */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-xs text-on-surface-v">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-on-surface">Vantage</span>
+              <span className="text-outline">·</span>
+              <span>Midnight Network WaveHack 2026</span>
+              <span className="text-outline">·</span>
+              <a
+                href="https://docs.midnight.network/"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold hover:text-primary transition-colors"
+              >
+                Midnight Docs
+              </a>
             </div>
-            <span className="font-headline font-bold text-slate-900">Vantage</span>
-            <span>&bull;</span>
-            <span>Midnight Network WaveHack 2026</span>
+            <span className="text-2xs font-mono text-outline">RBI NBFC-MFI Compliance · Compact 0.31.1</span>
           </div>
 
-          <div className="flex items-center gap-6 font-medium">
-            <span className="flex items-center gap-1 text-emerald-800 font-semibold">
-              <Lock className="h-3.5 w-3.5" />
-              RBI NBFC-MFI Compliance Engine
-            </span>
-            <a
-              href="https://docs.midnight.network/"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 hover:text-slate-900 transition"
-            >
-              <span>Midnight Docs</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        </div>
-
-        {/* Institutional Disclaimer */}
-        <div className="mx-auto max-w-7xl pt-3 border-t border-slate-100 flex items-start gap-2 text-[11px] text-slate-400 leading-relaxed">
-          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-slate-400" />
-          <span>
-            <strong>Disclaimer:</strong> Institution names used in test scenarios and demonstrations (e.g., Bandhan MFI, Fusion Microfinance, CreditAccess Grameen) are referenced strictly for illustrative purposes to model real-world Indian microfinance regulations. No formal partnership, commercial endorsement, or institutional affiliation is implied.
-          </span>
+          {/* Disclaimer */}
+          <p className="mt-4 pt-4 border-t border-outline-variant text-2xs text-outline leading-relaxed max-w-3xl">
+            <strong>Disclaimer:</strong> Institution names used in test scenarios (Bandhan MFI,
+            Fusion Microfinance, CreditAccess Grameen, Muthoot Microfin, Arohan Financial) are
+            referenced strictly for illustrative purposes to model real-world Indian microfinance
+            regulations. No formal partnership, commercial endorsement, or institutional affiliation
+            is implied.
+          </p>
         </div>
       </footer>
     </div>

@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 
+/** Design tokens from the Stitch "Emerald Sentinel" theme */
 const config: Config = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,53 +9,38 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      /* ── Stitch palette ─────────────────────────────── */
       colors: {
-        background: '#f8fafc',
-        surface: {
-          DEFAULT: '#ffffff',
-          dim: '#f1f5f9',
-          border: '#e2e8f0',
-        },
-        primary: {
-          DEFAULT: '#004532',
-          container: '#065f46',
-          fixed: '#a6f2d1',
-          light: '#ecfdf5',
-          dark: '#002b1f',
-        },
-        secondary: {
-          DEFAULT: '#006c49',
-          container: '#10b981',
-          light: '#d1fae5',
-        },
-        tertiary: {
-          DEFAULT: '#563400',
-          container: '#f59e0b',
-          light: '#fef3c7',
-        },
-        slate: {
-          850: '#151f30',
-          900: '#0f172a',
-          950: '#020617',
-        },
+        primary:    { DEFAULT: '#004532', c: '#065f46', light: '#ecfdf5', dim: '#8bd6b6' },
+        surface:    { DEFAULT: '#f7faf6', low: '#f1f4f0', container: '#ecefeb', high: '#e6e9e5', highest: '#e0e3df', bright: '#ffffff' },
+        outline:    { DEFAULT: '#6f7973', variant: '#bec9c2' },
+        on:         { surface: '#181c1a', 'surface-v': '#3f4944', primary: '#ffffff' },
+        error:      { DEFAULT: '#ba1a1a', container: '#ffdad6' },
+        amber:      { 50: '#fffbeb', 100: '#fef3c7', 400: '#fbbf24', 600: '#d97706', 900: '#78350f' },
       },
+      /* ── Typography ─────────────────────────────────── */
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-        headline: ['var(--font-manrope)', 'sans-serif'],
-        mono: ['var(--font-jetbrains-mono)', 'monospace'],
+        sans:  ['Manrope', 'system-ui', 'sans-serif'],
+        mono:  ['JetBrains Mono', 'monospace'],
       },
+      fontSize: {
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+      },
+      /* ── Spacing ─────────────────────────────────────── */
+      maxWidth: { container: '80rem' },
+      /* ── Shadows ─────────────────────────────────────── */
+      boxShadow: {
+        card: '0 2px 8px -2px rgba(0,0,0,0.06)',
+        'card-md': '0 4px 16px -4px rgba(0,0,0,0.09)',
+      },
+      /* ── Border radius ───────────────────────────────── */
       borderRadius: {
         sm: '0.25rem',
         DEFAULT: '0.5rem',
-        md: '0.75rem',
-        lg: '1rem',
-        xl: '1.5rem',
-        '2xl': '2rem',
-      },
-      boxShadow: {
-        card: '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-        'card-hover': '0 8px 30px -4px rgba(0, 0, 0, 0.08)',
-        glow: '0 0 20px -3px rgba(16, 185, 129, 0.25)',
+        md:  '0.625rem',
+        lg:  '0.75rem',
+        xl:  '1rem',
+        '2xl': '1.25rem',
       },
     },
   },

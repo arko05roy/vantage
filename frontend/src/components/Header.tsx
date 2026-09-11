@@ -1,18 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useVantageStore } from '@/lib/store';
-import {
-  ShieldCheck,
-  Building2,
-  Wallet,
-  CheckCircle2,
-  Layers,
-  Sparkles,
-  RotateCcw,
-  ExternalLink,
-  Cpu,
-} from 'lucide-react';
+import Image from 'next/image';
+
+type Tab = 'issuer' | 'borrower' | 'verifier' | 'explainer';
+
+const tabs: { id: Tab; label: string }[] = [
+  { id: 'issuer',    label: 'Issuer' },
+  { id: 'borrower',  label: 'Borrower' },
+  { id: 'verifier',  label: 'Verifier' },
+  { id: 'explainer', label: 'How it works' },
+];
 
 export const Header: React.FC = () => {
   const {
@@ -24,175 +23,148 @@ export const Header: React.FC = () => {
     onChainNullifiers,
   } = useVantageStore();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
-      {/* Top Banner: Regulatory & Network Status */}
-      <div className="border-b border-emerald-900/10 bg-emerald-950 px-4 py-1.5 text-xs text-emerald-100 sm:px-8">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-800/60 px-2 py-0.5 font-mono text-[11px] font-semibold text-emerald-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400"></span>
-              MIDNIGHT DUAL-LEDGER
-            </span>
-            <span className="hidden sm:inline text-emerald-300/80">
-              Compact Engine v0.31.1 • RBI NBFC-MFI Regulatory Exposure Protocol
-            </span>
-          </div>
-          <div className="flex items-center gap-3 font-mono text-[11px] text-emerald-300/90">
-            <span>Commitments: <strong className="text-white">{onChainCommitments.length}</strong></span>
-            <span>•</span>
-            <span>Nullifiers: <strong className="text-white">{onChainNullifiers.length}</strong></span>
-          </div>
+    <header className="sticky top-0 z-40 w-full border-b border-outline-variant bg-surface-bright/95 backdrop-blur-sm">
+      {/* ── Status bar ─────────────────────────────────────────────── */}
+      <div className="bg-primary px-4 sm:px-6">
+        <div className="mx-auto flex max-w-container items-center justify-between py-1.5">
+          <span className="flex items-center gap-2 text-2xs font-medium text-primary-dim tracking-wide">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary-dim animate-proof" />
+            Midnight Preview Testnet
+          </span>
+          <span className="font-mono text-2xs text-primary-dim/80">
+            Commitments:&nbsp;
+            <strong className="text-white">{onChainCommitments.length}</strong>
+            &nbsp;·&nbsp;Nullifiers:&nbsp;
+            <strong className="text-white">{onChainNullifiers.length}</strong>
+          </span>
         </div>
       </div>
 
-      {/* Main Header Bar */}
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 text-white shadow-md shadow-emerald-900/20 ring-1 ring-emerald-700/50">
-            <ShieldCheck className="h-6 w-6 text-emerald-300" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-headline text-xl font-bold tracking-tight text-slate-900">
-                VANTAGE
-              </h1>
-              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                Wave 1
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-medium">
-              Zero-Knowledge Credit Exposure Verification
-            </p>
+      {/* ── Main bar ───────────────────────────────────────────────── */}
+      <div className="mx-auto flex max-w-container items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        {/* Logo: V-mark only — show left ~30% of the wide PNG */}
+        <div className="flex-shrink-0">
+          <div className="relative h-9 w-9 overflow-hidden">
+            <Image
+              src="/logo.png"
+              alt="Vantage"
+              fill
+              sizes="36px"
+              className="object-cover object-left"
+              priority
+            />
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1 rounded-xl bg-slate-100 p-1 ring-1 ring-slate-200/80">
-          <button
-            onClick={() => setActiveTab('issuer')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
-              activeTab === 'issuer'
-                ? 'bg-white text-emerald-900 shadow-sm ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Building2 className="h-4 w-4 text-emerald-700" />
-            1. Issuer Portal
-          </button>
-          <button
-            onClick={() => setActiveTab('borrower')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
-              activeTab === 'borrower'
-                ? 'bg-white text-emerald-900 shadow-sm ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Wallet className="h-4 w-4 text-emerald-700" />
-            2. Borrower Vault
-          </button>
-          <button
-            onClick={() => setActiveTab('verifier')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
-              activeTab === 'verifier'
-                ? 'bg-white text-emerald-900 shadow-sm ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-            3. Verifier Portal
-          </button>
-          <button
-            onClick={() => setActiveTab('explainer')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
-              activeTab === 'explainer'
-                ? 'bg-white text-emerald-900 shadow-sm ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="h-4 w-4 text-emerald-700" />
-            Dual-Ledger Architecture
-          </button>
+        {/* ── Desktop nav ────────────────────────────────────────────── */}
+        <nav className="hidden md:flex items-center gap-1 rounded-lg bg-surface-container p-1">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={[
+                'rounded-md px-4 py-1.5 text-sm font-semibold transition-colors',
+                activeTab === t.id
+                  ? 'bg-surface-bright text-primary shadow-card'
+                  : 'text-on-surface-v hover:text-on-surface',
+              ].join(' ')}
+            >
+              {t.label}
+            </button>
+          ))}
         </nav>
 
-        {/* Preset Scenarios Dropdown / Reset */}
-        <div className="flex items-center gap-2">
-          <div className="hidden lg:flex items-center gap-1.5">
-            <span className="text-[11px] font-semibold text-slate-400">Quick Test:</span>
-            <button
-              onClick={() => loadScenario('compliant_2_loans')}
-              className="rounded-md border border-emerald-300/80 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 transition hover:bg-emerald-100"
-              title="2 Loans (₹40k + ₹50k = ₹90k <= ₹100k cap)"
-            >
-              ✅ Compliant (2 Loans)
-            </button>
-            <button
-              onClick={() => loadScenario('exceeds_amount')}
-              className="rounded-md border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
-              title="2 Loans (₹60k + ₹55k = ₹115k > ₹100k cap)"
-            >
-              ❌ Exceeds Cap (₹1.15L)
-            </button>
-            <button
-              onClick={() => loadScenario('exceeds_lenders')}
-              className="rounded-md border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
-              title="3 Loans from 3 Lenders (> 2 Lenders Cap)"
-            >
-              ❌ 3 Lenders Cap
-            </button>
-          </div>
-
+        {/* ── Desktop quick-test + reset ──────────────────────────────── */}
+        <div className="hidden lg:flex items-center gap-2">
+          <span className="text-2xs font-semibold text-outline">Quick test:</span>
+          <button
+            onClick={() => loadScenario('compliant_2_loans')}
+            className="rounded-md border border-primary/30 bg-primary-light px-2.5 py-1 text-2xs font-semibold text-primary transition hover:bg-primary-dim/20"
+            title="2 loans — compliant"
+          >
+            Compliant
+          </button>
+          <button
+            onClick={() => loadScenario('exceeds_amount')}
+            className="rounded-md border border-amber-600/30 bg-amber-50 px-2.5 py-1 text-2xs font-semibold text-amber-900 transition hover:bg-amber-100"
+            title="Exceeds ₹1L cap"
+          >
+            Exceeds Cap
+          </button>
+          <button
+            onClick={() => loadScenario('exceeds_lenders')}
+            className="rounded-md border border-amber-600/30 bg-amber-50 px-2.5 py-1 text-2xs font-semibold text-amber-900 transition hover:bg-amber-100"
+            title="3 lenders — over cap"
+          >
+            3 Lenders
+          </button>
           <button
             onClick={resetAll}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-            title="Reset All State"
+            className="rounded-md border border-outline-variant px-2.5 py-1 text-2xs font-semibold text-on-surface-v transition hover:bg-surface-container"
           >
-            <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
-            <span className="hidden sm:inline">Reset</span>
+            Reset
           </button>
         </div>
+
+        {/* ── Mobile hamburger ────────────────────────────────────────── */}
+        <button
+          className="md:hidden rounded-lg border border-outline-variant p-2 text-on-surface-v"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="Toggle menu"
+        >
+          {menuOpen ? (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
       </div>
 
-      {/* Mobile Navigation Bar */}
-      <div className="flex md:hidden border-t border-slate-200 bg-slate-50 px-2 py-1.5 overflow-x-auto gap-1">
-        <button
-          onClick={() => setActiveTab('issuer')}
-          className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
-            activeTab === 'issuer' ? 'bg-emerald-900 text-white' : 'text-slate-600'
-          }`}
-        >
-          <Building2 className="h-3.5 w-3.5" />
-          Issuer
-        </button>
-        <button
-          onClick={() => setActiveTab('borrower')}
-          className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
-            activeTab === 'borrower' ? 'bg-emerald-900 text-white' : 'text-slate-600'
-          }`}
-        >
-          <Wallet className="h-3.5 w-3.5" />
-          Borrower
-        </button>
-        <button
-          onClick={() => setActiveTab('verifier')}
-          className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
-            activeTab === 'verifier' ? 'bg-emerald-900 text-white' : 'text-slate-600'
-          }`}
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Verifier
-        </button>
-        <button
-          onClick={() => setActiveTab('explainer')}
-          className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
-            activeTab === 'explainer' ? 'bg-emerald-900 text-white' : 'text-slate-600'
-          }`}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          Architecture
-        </button>
-      </div>
+      {/* ── Mobile drawer ──────────────────────────────────────────────── */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-outline-variant bg-surface-bright px-4 pb-4 pt-2 space-y-1">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { setActiveTab(t.id); setMenuOpen(false); }}
+              className={[
+                'w-full text-left rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors',
+                activeTab === t.id
+                  ? 'bg-primary text-on-primary'
+                  : 'text-on-surface-v hover:bg-surface-container',
+              ].join(' ')}
+            >
+              {t.label}
+            </button>
+          ))}
+          {/* Mobile quick-test row */}
+          <div className="pt-2 flex flex-wrap gap-2 border-t border-outline-variant mt-2">
+            <button onClick={() => { loadScenario('compliant_2_loans'); setMenuOpen(false); }}
+              className="rounded-md border border-primary/30 bg-primary-light px-2.5 py-1 text-2xs font-semibold text-primary">
+              Compliant
+            </button>
+            <button onClick={() => { loadScenario('exceeds_amount'); setMenuOpen(false); }}
+              className="rounded-md border border-amber-600/30 bg-amber-50 px-2.5 py-1 text-2xs font-semibold text-amber-900">
+              Exceeds Cap
+            </button>
+            <button onClick={() => { loadScenario('exceeds_lenders'); setMenuOpen(false); }}
+              className="rounded-md border border-amber-600/30 bg-amber-50 px-2.5 py-1 text-2xs font-semibold text-amber-900">
+              3 Lenders
+            </button>
+            <button onClick={() => { resetAll(); setMenuOpen(false); }}
+              className="rounded-md border border-outline-variant px-2.5 py-1 text-2xs font-semibold text-on-surface-v">
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

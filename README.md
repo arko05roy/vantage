@@ -1,6 +1,7 @@
 # Vantage — Privacy-Preserving Credit Exposure Oracle on Midnight
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black.svg?logo=vercel)](https://vantage-midnightwrk.vercel.app/)
 [![Midnight Network](https://img.shields.io/badge/Midnight-Dual--Ledger-purple.svg)](https://docs.midnight.network/)
 [![Compact Version](https://img.shields.io/badge/Compact%20Compiler-0.31.1-green.svg)](https://docs.midnight.network/)
 [![Node.js Version](https://img.shields.io/badge/Node.js-22%20LTS-brightgreen.svg)](https://nodejs.org/)
@@ -11,8 +12,9 @@
 
 ---
 
-## 📺 Project Resources
+## 📺 Project Resources & Live Demo
 
+* 🌐 **Live Web Application**: [https://vantage-midnightwrk.vercel.app/](https://vantage-midnightwrk.vercel.app/)
 * 🎥 **Video Demo Walkthrough**: [Watch on YouTube](https://www.youtube.com/watch?v=fjpweqd8ntU)
 * 📊 **Presentation Slide Deck**: [View on Google Slides](https://docs.google.com/presentation/d/1FWppOp8hFJ8qjXGI31EL0wIbHy5VHDlIs0LvuDmvWDc/edit?usp=sharing)
 
@@ -127,7 +129,7 @@ npm run test:e2e
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser, or test the production deployment directly at [https://vantage-midnightwrk.vercel.app/](https://vantage-midnightwrk.vercel.app/).
 
 ### 4. Deploy Standalone Contract Simulation
 ```bash

@@ -27,15 +27,6 @@
 
 
 
----
-
-## 👛 Lace Wallet Connection
-
-The dApp integrates the Midnight **DApp Connector API** — click **Connect Lace**
-in the header to authorize the app, view your shielded/unshielded/DUST
-addresses, and disconnect at any time. Requires the
-[Lace wallet extension](https://chromewebstore.google.com/detail/lace/gafhhkghbfjjkeiendhlofajokpaflmk)
-set to the **Preprod** network.
 
 ---
 

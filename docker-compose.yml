@@ -1,7 +1,7 @@
 services:
   # Midnight Zero-Knowledge Proof Server
   proof-server:
-    image: midnightnetwork/proof-server:latest
+    image: midnightntwrk/proof-server:8.0.3
     container_name: vantage-proof-server
     ports:
       - "6300:6300"

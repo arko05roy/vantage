@@ -9,10 +9,13 @@
     "build": "tsc",
     "deploy": "tsx scripts/deploy.ts",
     "deploy:preprod": "tsx scripts/deploy-preprod.ts",
+    "status": "tsx scripts/status.ts",
+    "dust-parallel": "tsx scripts/dust-parallel.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@midnight-ntwrk/compact-js": "2.5.1",
     "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
     "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "4.1.1",
@@ -25,7 +28,10 @@
     "@midnight-ntwrk/midnight-js-types": "4.1.1",
     "@midnight-ntwrk/midnight-js-utils": "4.1.1",
     "@midnightntwrk/wallet-sdk": "1.2.0",
+    "@midnightntwrk/wallet-sdk-capabilities": "3.3.1",
+    "graphql-ws": "6.2.1",
     "rxjs": "7.8.2",
+    "undici": "^7.29.1",
     "ws": "8.18.3"
   },
   "devDependencies": {
@@ -36,7 +42,7 @@
     "vitest": "^3.0.5"
   },
   "optionalDependencies": {
-    "@rollup/rollup-darwin-arm64": "4.52.0",
-    "@esbuild/darwin-arm64": "0.28.2"
+    "@esbuild/darwin-arm64": "0.28.2",
+    "@rollup/rollup-darwin-arm64": "4.52.0"
   }
 }

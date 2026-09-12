@@ -1,0 +1,23 @@
+{
+  "network": "preprod",
+  "contractAddress": "f1ea40c9c4505af3fe0a7d04ac71281e8687a4b91f82968802b59fbc39fd8155",
+  "deployTxHash": "d8cc8b5c7cae2c714e8890e179f3161463851ee5c6eb033ad2ea5526b008a56b",
+  "deployTxIdentifiers": [
+    "00766560d97ad702893c3281cb22369d6b364b801ea8b706fcc9ed5dac1f7f66e3",
+    "009124bfd3ebf81ee8cb18485c49067f22b730c81a47241f72a46e9a48db95ac5f"
+  ],
+  "blockHeight": 2520188,
+  "deployerUnshieldedAddress": "mn_addr_preprod184y3tte8uwpap9j5zdy328q2cuunslqmtj9hmg4xcmf99lhzqewq2sg0vq",
+  "indexer": "https://indexer.preprod.midnight.network/api/v4/graphql",
+  "deployedAt": "2026-09-12T17:23:06.407Z",
+  "toolchain": {
+    "compactCompiler": "0.31.1",
+    "compactRuntime": "0.16.0",
+    "midnightJs": "4.1.1",
+    "walletSdk": "1.2.0"
+  },
+  "explorers": {
+    "midnightexplorer": "https://preprod.midnightexplorer.com/contract/f1ea40c9c4505af3fe0a7d04ac71281e8687a4b91f82968802b59fbc39fd8155",
+    "subscan": "https://midnight-preprod.subscan.io/"
+  }
+}

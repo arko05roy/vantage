@@ -10,6 +10,9 @@ type Tab = 'issuer' | 'borrower' | 'verifier' | 'explainer';
 const truncateAddress = (addr: string) =>
   addr.length > 24 ? `${addr.slice(0, 20)}…${addr.slice(-6)}` : addr;
 
+const DEPLOYED_CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? '';
+const hasDeployedContract = /^[0-9a-fA-F]{64}$/.test(DEPLOYED_CONTRACT) && !/^0+$/.test(DEPLOYED_CONTRACT);
+
 const WalletButton: React.FC<{ className?: string }> = ({ className }) => {
   const { laceInstalled, walletStatus, walletConnection, walletError, connectWallet, disconnectWallet } =
     useVantageStore();
@@ -81,6 +84,21 @@ export const Header: React.FC = () => {
             Midnight Preprod
           </span>
           <span className="font-mono text-2xs text-primary-dim/80">
+            {hasDeployedContract && (
+              <>
+                Contract:&nbsp;
+                <a
+                  href={`https://preprod.midnightexplorer.com/contract/${DEPLOYED_CONTRACT}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white underline decoration-primary-dim/60 underline-offset-2"
+                  title="Verify contract on Midnight Preprod explorer"
+                >
+                  {DEPLOYED_CONTRACT.slice(0, 8)}…{DEPLOYED_CONTRACT.slice(-6)}
+                </a>
+                &nbsp;·&nbsp;
+              </>
+            )}
             Commitments:&nbsp;
             <strong className="text-white">{onChainCommitments.length}</strong>
             &nbsp;·&nbsp;Nullifiers:&nbsp;

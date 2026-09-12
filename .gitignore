@@ -17,6 +17,12 @@ contracts/.env.preprod
 midnight-level-db/
 .leveldb/
 
+# Midnight local wallet state (never commit — skill guardrails)
+.dust-ranges/
+dust-snapshot.json
+*-private-state/
+.compact/
+
 # Operating System & IDE
 .DS_Store
 Thumbs.db

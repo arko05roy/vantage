@@ -13,6 +13,7 @@
     "build:contracts": "npm --prefix contracts run compact:compile",
     "deploy:contracts": "npm --prefix contracts run deploy",
     "deploy:preprod": "npm --prefix contracts run deploy:preprod",
+    "gen:addresses": "npm --prefix contracts run gen:addresses",
     "test": "npm run test:contracts",
     "test:contracts": "npm --prefix contracts test",
     "test:e2e": "npm --prefix contracts test -- tests/e2e-scenario.test.ts",

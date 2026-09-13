@@ -34,6 +34,10 @@ network and verifiable on-chain via the public indexer
 * **Verification**: confirmed via `contractAction(address, offset: null)` on the indexer; see [`contracts/deployment.preprod.json`](contracts/deployment.preprod.json) or look the address up on [midnightexplorer.com](https://preprod.midnightexplorer.com/contract/f1ea40c9c4505af3fe0a7d04ac71281e8687a4b91f82968802b59fbc39fd8155) / [midnight-preprod.subscan.io](https://midnight-preprod.subscan.io/)
 * **Redeploy**: `SEED=<64-hex> npm run dust-parallel && SEED=<64-hex> npm run deploy:preprod` (see `contracts/scripts/deploy-preprod.ts`)
 
+### Test Addresses
+
+50 freshly generated unshielded preprod addresses are listed in
+[`PREPROD-ADDRESSES.md`](PREPROD-ADDRESSES.md).
 
 ---
 

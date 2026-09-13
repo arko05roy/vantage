@@ -21,6 +21,7 @@ midnight-level-db/
 .dust-ranges/
 dust-snapshot.json
 *-private-state/
+*.secrets.json
 .compact/
 
 # Operating System & IDE

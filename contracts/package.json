@@ -10,6 +10,7 @@
     "deploy": "tsx scripts/deploy.ts",
     "deploy:preprod": "tsx scripts/deploy-preprod.ts",
     "status": "tsx scripts/status.ts",
+    "gen:addresses": "tsx scripts/gen-addresses.ts",
     "dust-parallel": "tsx scripts/dust-parallel.ts",
     "test": "vitest run",
     "test:watch": "vitest"

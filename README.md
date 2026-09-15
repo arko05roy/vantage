@@ -18,7 +18,7 @@
 * 🌐 **Live Web Application**: [https://vantage-midnightwrk.vercel.app/](https://vantage-midnightwrk.vercel.app/)
 * 🎥 **Video Demo Walkthrough**: [Watch on YouTube](https://www.youtube.com/watch?v=fjpweqd8ntU)
 * 📊 **Presentation Slide Deck**: [View on Google Slides](https://docs.google.com/presentation/d/1FWppOp8hFJ8qjXGI31EL0wIbHy5VHDlIs0LvuDmvWDc/edit?usp=sharing)
-
+*  **X Link **: [Vantage Twitter](https://x.com/kaidomarkets)
 ---
 
 ## 🌐 Preprod Deployment
